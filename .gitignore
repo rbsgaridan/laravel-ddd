@@ -1,0 +1,59 @@
+# Dependency directories
+/vendor/*
+/vendor/composer
+/node_modules/
+packages/incoder-ddd/vendor/composer/autoload_files.php
+packages/incoder-ddd/vendor/composer/autoload_psr4.php
+packages/incoder-ddd/vendor/composer/autoload_static.php
+packages/incoder-ddd/vendor/composer/installed.json
+packages/incoder-ddd/vendor/composer/installed.php
+
+
+
+# Laravel-specific ignores
+.env
+.env.*.local
+storage/framework/cache/*
+storage/framework/views/*
+storage/framework/sessions/*
+storage/logs/*
+
+# Composer
+composer.lock
+composer.phar
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.phpunit.result.cache
+coverage/
+
+# Build/autoload
+build/
+.phploy
+autoload.php
+
+# OS metadata
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Local development
+docker-compose.override.yml
+*.local.*
+
+# Logs and debug
+*.log
+*.sqlite
+*.sql
+debugbar.json
+
+# Package-specific (for libraries)
+/.phpunit.cache
+/.php_cs.cache
+/.phpcs-cache

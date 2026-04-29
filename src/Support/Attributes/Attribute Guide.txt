@@ -1,0 +1,34 @@
+
+Usage of FromBody, FromUri, & FromQuery
+
+<?php
+class EmployeeAppService extends AppServiceBase 
+{
+    // Will generate: GET /api/employee/department/{deptId}/active
+    // deptId in URI, status in query string
+    public function getActiveDepartmentEmployees(
+        #[FromUri] string $deptId,
+        #[FromQuery] string $status = 'active'
+    ) {
+        // Implementation
+    }
+
+    // Will generate: POST /api/employee/transfer/{employeeId}
+    // employeeId in URI, transferData in request body
+    public function postTransferEmployee(
+        #[FromUri] string $employeeId,
+        #[FromBody] array $transferData
+    ) {
+        // Implementation
+    }
+
+    // Convention-based without attributes:
+    // Will generate: PUT /api/employee/{employeeId}/status
+    // employeeId in URI, status in body (because PUT)
+    public function putEmployeeStatus(
+        string $employeeId,
+        string $status
+    ) {
+        // Implementation
+    }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "incoder/ddd",
+  "description": "Domain-Driven Design (DDD) Library for Laravel inspired by ABP Framework",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Incoder\\DDD\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.3",
+    "illuminate/support": "^12.21",
+    "illuminate/database": "^12.21",
+    "ramsey/uuid": "^4.7 || ^5.0",
+    "spatie/laravel-data": "^4.17",
+    "spatie/laravel-activitylog": "^4.10"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Incoder\\DDD\\Support\\IncoderDDDServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "authors": [
+    {
+      "name": "Incoder",
+      "email": "rbsgaridan@usm.edu.ph"
+    },
+    {
+      "name": "Kian Naquines",
+      "email": "kjnaquines@usm.edu.ph"
+    }
+  ]
+}

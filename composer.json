@@ -1,5 +1,5 @@
 {
-  "name": "incoder/ddd",
+  "name": "incoder/laravel-ddd",
   "description": "Domain-Driven Design (DDD) Library for Laravel inspired by ABP Framework",
   "type": "library",
   "license": "MIT",
@@ -27,12 +27,8 @@
   "prefer-stable": true,
   "authors": [
     {
-      "name": "Incoder",
-      "email": "rbsgaridan@usm.edu.ph"
-    },
-    {
-      "name": "Kian Naquines",
-      "email": "kjnaquines@usm.edu.ph"
+      "name": "Ralph Butch S. Garidan",
+      "email": "ralphbutchgaridan@gmail.com"
     }
   ]
 }

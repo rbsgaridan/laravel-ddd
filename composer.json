@@ -1,6 +1,6 @@
 {
   "name": "incoder/laravel-ddd",
-  "description": "Domain-Driven Design (DDD) Library for Laravel inspired by ABP Framework",
+  "description": "Domain-Driven Design (DDD) Library for Laravel",
   "type": "library",
   "license": "MIT",
   "keywords": [

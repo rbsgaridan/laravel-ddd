@@ -32,7 +32,7 @@ class AppServiceMiddleware
     public readonly array $middleware;
 
     /**
-     * @param string[] $middleware  Middleware list to apply to every route in this AppService.
+     * @param  string[]  $middleware  Middleware list to apply to every route in this AppService.
      */
     public function __construct(array $middleware = ['auth:sanctum'])
     {

@@ -3,7 +3,9 @@
 namespace Incoder\DDD\Support\Console\Commands;
 
 use Illuminate\Console\Command;
+use Incoder\DDD\Support\Helper\PackageConfig;
 use Incoder\DDD\Support\OpenApi\OpenApiGenerator;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Artisan command: api:generate-spec
@@ -31,8 +33,8 @@ class GenerateApiSpec extends Command
     {
         $this->info('🔍  Scanning controllers for RouteAttribute routes…');
 
-        $generator = new OpenApiGenerator();
-        $spec      = $generator->generate();
+        $generator = new OpenApiGenerator;
+        $spec = $generator->generate();
         $spec['paths'] = array_filter(
             $spec['paths'] ?? [],
             fn (string $path): bool => $this->shouldIncludePath($path),
@@ -43,42 +45,46 @@ class GenerateApiSpec extends Command
         $this->line("    Found <comment>{$pathCount}</comment> unique paths.");
 
         $format = strtolower($this->option('format') ?? 'json');
-        if (!in_array($format, ['json', 'yaml'], true)) {
+        if (! in_array($format, ['json', 'yaml'], true)) {
             $this->error("Unsupported format: '{$format}'. Use 'json' or 'yaml'.");
+
             return self::FAILURE;
         }
 
         $content = match ($format) {
-            'yaml'  => $this->toYaml($spec),
+            'yaml' => $this->toYaml($spec),
             default => json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         };
 
         if ($this->option('stdout')) {
             $this->output->writeln($content);
+
             return self::SUCCESS;
         }
 
         $defaultName = "api-docs.{$format}";
-        $outputPath  = $this->option('output') ?: public_path($defaultName);
+        $outputPath = $this->option('output') ?: public_path($defaultName);
 
         // Ensure directory exists
         $dir = dirname($outputPath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         file_put_contents($outputPath, $content);
 
         $this->info("✅  Spec written to <comment>{$outputPath}</comment>");
-        $this->line("    Paths: <comment>{$pathCount}</comment> | Schemas: <comment>" . count($spec['components']['schemas'] ?? []) . "</comment>");
+        $this->line("    Paths: <comment>{$pathCount}</comment> | Schemas: <comment>".count($spec['components']['schemas'] ?? []).'</comment>');
 
         return self::SUCCESS;
     }
 
     private function shouldIncludePath(string $path): bool
     {
-        return str_starts_with($path, '/app/api/')
-            || $path === '/app/api'
+        $prefix = rtrim(PackageConfig::appServiceRoutePrefix(), '/');
+
+        return str_starts_with($path, $prefix.'/')
+            || $path === $prefix
             || str_starts_with($path, '/sanctum/')
             || $path === '/sanctum';
     }
@@ -93,11 +99,12 @@ class GenerateApiSpec extends Command
      */
     private function toYaml(array $spec): string
     {
-        if (!class_exists(\Symfony\Component\Yaml\Yaml::class)) {
+        if (! class_exists(Yaml::class)) {
             $this->warn('symfony/yaml not found — falling back to JSON.');
+
             return json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }
 
-        return \Symfony\Component\Yaml\Yaml::dump($spec, 10, 2, \Symfony\Component\Yaml\Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+        return Yaml::dump($spec, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
     }
 }

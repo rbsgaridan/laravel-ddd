@@ -8,6 +8,7 @@ namespace Incoder\DDD\Domain\ValueObjects;
 class FullName extends ValueObject
 {
     private string $firstName;
+
     private string $lastName;
 
     public function __construct(string $firstName, string $lastName)

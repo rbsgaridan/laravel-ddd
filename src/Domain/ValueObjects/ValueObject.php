@@ -10,16 +10,12 @@ use JsonSerializable;
  *
  * Base class for all Value Objects in the domain.
  * Value Objects must be immutable and compared by their values.
- *
- * @package Incoder\DDD\Domain\ValueObjects
  */
-abstract class ValueObject implements JsonSerializable, Arrayable
+abstract class ValueObject implements Arrayable, JsonSerializable
 {
     /**
      * ValueObject constructor.
      * Ensures immutability by setting properties only once.
-     *
-     * @param array $values
      */
     public function __construct(array $values = [])
     {
@@ -46,9 +42,6 @@ abstract class ValueObject implements JsonSerializable, Arrayable
 
     /**
      * Check value equality.
-     *
-     * @param ValueObject $other
-     * @return bool
      */
     public function equals(ValueObject $other): bool
     {
@@ -58,8 +51,6 @@ abstract class ValueObject implements JsonSerializable, Arrayable
 
     /**
      * Convert the value object to an array.
-     *
-     * @return array
      */
     public function toArray(): array
     {
@@ -68,8 +59,6 @@ abstract class ValueObject implements JsonSerializable, Arrayable
 
     /**
      * JSON serialization.
-     *
-     * @return array
      */
     public function jsonSerialize(): array
     {
@@ -78,8 +67,6 @@ abstract class ValueObject implements JsonSerializable, Arrayable
 
     /**
      * String representation of the value object.
-     *
-     * @return string
      */
     public function __toString(): string
     {

@@ -16,6 +16,4 @@ use Attribute;
  *   public function internalCallback(Request $request) { ... }
  */
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD)]
-class ApiHide
-{
-}
+class ApiHide {}

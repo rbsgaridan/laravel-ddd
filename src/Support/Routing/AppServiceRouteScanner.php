@@ -2,16 +2,16 @@
 
 namespace Incoder\DDD\Support\Routing;
 
-use Incoder\DDD\Support\Routing\RouteRegistrar;
-use ReflectionClass;
 use Incoder\DDD\Application\Services\AppServiceBase;
+use Incoder\DDD\Support\Helper\PackageConfig;
+use ReflectionClass;
 
 class AppServiceRouteScanner
 {
     private array $_classMap;
 
     /**
-     * @param array $classMap Composer's autoload_classmap.php contents
+     * @param  array  $classMap  Composer's autoload_classmap.php contents
      */
     public function __construct(array $classMap)
     {
@@ -23,7 +23,7 @@ class AppServiceRouteScanner
         foreach ($this->findAppServiceClasses() as $class) {
             $baseUri = $this->getBaseUri($class);
             $registrar = new RouteRegistrar($baseUri, $class);
-            
+
             $registrar->registerCustomRoutes();
             $registrar->registerCrudRoutes();
         }
@@ -33,7 +33,8 @@ class AppServiceRouteScanner
     {
         $reflection = new ReflectionClass($class);
         $serviceName = strtolower(str_replace('AppService', '', $reflection->getShortName()));
-        return "/app/api/{$serviceName}";
+
+        return rtrim(PackageConfig::appServiceRoutePrefix(), '/')."/{$serviceName}";
     }
 
     private function findAppServiceClasses(): array
@@ -46,13 +47,12 @@ class AppServiceRouteScanner
                 // 2. End with AppService
                 // 3. Are not interfaces (don't start with I)
                 // 4. Exist and are subclasses of AppServiceBase
-                return str_starts_with($class, 'Core\\Application\\') &&
+                return str_starts_with($class, PackageConfig::applicationNamespace().'\\') &&
                     str_ends_with($class, 'AppService') &&
-                    !str_starts_with(basename($class), 'I') &&
+                    ! str_starts_with(class_basename($class), 'I') &&
                     class_exists($class) &&
                     is_subclass_of($class, AppServiceBase::class);
             }
         );
     }
-    
 }

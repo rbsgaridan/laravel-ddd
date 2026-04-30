@@ -3,18 +3,19 @@
 namespace Incoder\DDD\Support\Console\Commands;
 
 use Illuminate\Console\Command;
+use Incoder\DDD\Support\Helper\PackageConfig;
 use Incoder\DDD\Support\TypeScript\TypeScriptProxyGenerator;
 
 class GenerateTypeScriptProxies extends Command
 {
     protected $signature = 'proxy:generate
-        {--output=resources/js/proxiees : Relative output path for the generated proxies}';
+        {--output= : Relative output path for the generated proxies}';
 
     protected $description = 'Generate TypeScript AppService proxies and DTO models from the auto-registered AppServices';
 
     public function handle(TypeScriptProxyGenerator $generator): int
     {
-        $output = (string) $this->option('output');
+        $output = (string) ($this->option('output') ?: PackageConfig::typeScriptOutputPath());
 
         $this->info('Generating TypeScript proxies from AppServices...');
 

@@ -3,12 +3,14 @@
 namespace Incoder\DDD\Support\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Str;
+use Incoder\DDD\Support\Helper\PackageConfig;
 
 class MakeDomainModel extends Command
 {
     protected $signature = 'make:domain-model {name} {--type=entity} {--format=format} {--incrementing=incrementing} {--schema=schema}{--only-model : Generate only the Domain Model file}';
+
     protected $description = 'Create a new Domain model, repository interface, implementation, migration, and DI binding';
 
     public function handle()
@@ -25,9 +27,9 @@ class MakeDomainModel extends Command
                 break;
             default:
                 $this->error('The --type flag should be a string either aggregate or entity value.');
+
                 return 1;
         }
-
 
         switch ($format) {
             case 'string':
@@ -35,6 +37,7 @@ class MakeDomainModel extends Command
                 break;
             default:
                 $this->error('The --format flag should be a string either string or int value.');
+
                 return 1;
         }
 
@@ -44,6 +47,7 @@ class MakeDomainModel extends Command
                 break;
             default:
                 $this->error('The --incrementing flag should be a boolean value.');
+
                 return 1;
         }
 
@@ -54,30 +58,31 @@ class MakeDomainModel extends Command
             $incrementing = $this->option('incrementing');
 
             $plural = Str::pluralStudly($name);
-            $filesystem = new Filesystem();
+            $filesystem = new Filesystem;
             $domainFolder = $this->createDomainFolder($filesystem, $plural);
 
             $this->createModelClass($filesystem, $domainFolder, $name, $type, $plural, $format, $incrementing);
 
             $this->info("Model-only creation complete: {$domainFolder}/{$name}.php");
+
             return 0;
         }
 
         if ($format == 'string' && $incrementing == 'true') {
             $this->error('String key type should be --incrementing=false.');
+
             return 1;
         }
 
         if ($format == 'int' && $incrementing == 'false') {
             $this->error('Integer key type should be --incrementing=true.');
+
             return 1;
         }
 
-
-
         $plural = Str::pluralStudly($name);
 
-        $filesystem = new Filesystem();
+        $filesystem = new Filesystem;
 
         $domainFolder = $this->createDomainFolder($filesystem, $plural);
         $applicationFolder = $this->createApplicationFolder($filesystem, $plural);
@@ -89,7 +94,6 @@ class MakeDomainModel extends Command
         $infraFolder = $this->createInfraFolder($filesystem);
         $this->createRepositoryImplementation($filesystem, $infraFolder, $name, $plural);
         $this->createMigration($filesystem, $name, $plural, $format, $schema);
-
 
         // App Service
         $applicationFolder = $this->createApplicationFolder($filesystem, $plural);
@@ -105,25 +109,27 @@ class MakeDomainModel extends Command
 
     public function createApplicationFolder(Filesystem $filesystem, string $plural): string
     {
-        $relativePath = "core/Application/{$plural}";
+        $relativePath = PackageConfig::applicationPath($plural);
         $filesystem->ensureDirectoryExists(base_path($relativePath));
+
         return $relativePath;
     }
 
     public function createContractFolder(Filesystem $filesystem, string $applicationFolder): string
     {
-        $relativePath = $applicationFolder . '/Contracts';
+        $relativePath = $applicationFolder.'/Contracts';
         $filesystem->ensureDirectoryExists(base_path($relativePath));
+
         return $relativePath;
     }
-
 
     private function createDTO(Filesystem $filesystem, string $contractFolder, string $name, string $plural): string
     {
         $className = "{$name}DTO";
+        $applicationNamespace = PackageConfig::applicationNamespace("{$plural}\\Contracts");
         $dtoClass = "<?php
 
-namespace Core\\Application\\{$plural}\\Contracts;
+namespace {$applicationNamespace};
 
 use Incoder\\DDD\\Application\\DTOs\\DTOBase;
 
@@ -141,9 +147,10 @@ class {$className} extends DTOBase
     private function createPaginatedDTO(Filesystem $filesystem, string $applicationFolder, string $name, string $plural): string
     {
         $className = "{$name}PaginatedDTO";
+        $applicationNamespace = PackageConfig::applicationNamespace("{$plural}\\Contracts");
         $dtoClass = "<?php
 
-namespace Core\\Application\\{$plural}\\Contracts;
+namespace {$applicationNamespace};
 
 use Incoder\\DDD\\Application\\DTOs\\PaginatedDTOBase;
 use Spatie\\LaravelData\\DataCollection;
@@ -161,15 +168,17 @@ class {$name}PaginatedDTO extends PaginatedDTOBase
 ";
         $filesystem->put("{$applicationFolder}/Contracts/{$name}PaginatedDTO.php", $dtoClass);
         $this->info("Created Paginated DTO for {$name}.");
+
         return $className;
     }
 
     private function createListDTO(Filesystem $filesystem, string $applicationFolder, string $name, string $plural): string
     {
         $className = "{$name}ListDTO";
+        $applicationNamespace = PackageConfig::applicationNamespace("{$plural}\\Contracts");
         $dtoListClass = "<?php
 
-namespace Core\\Application\\{$plural}\\Contracts;
+namespace {$applicationNamespace};
 
 use Incoder\\DDD\\Application\\DTOs\\DTOBase;
 
@@ -180,15 +189,16 @@ class {$className} extends DTOBase
 ";
         $filesystem->put("{$applicationFolder}/Contracts/{$name}ListDTO.php", $dtoListClass);
         $this->info("Created List DTO for {$name}.");
+
         return $className;
     }
-
 
     private function createInterfaceAppService($filesystem, string $applicationFolder, string $name, string $plural): string
     {
         $interfaceName = "I{$name}AppService";
+        $applicationNamespace = PackageConfig::applicationNamespace($plural);
         $interfaceContent = "<?php
-namespace Core\\Application\\{$plural};
+namespace {$applicationNamespace};
 
 use Incoder\\DDD\\Application\\Contracts\\IAppService;
 
@@ -200,22 +210,26 @@ interface {$interfaceName} extends IAppService
 
         $filesystem->put("{$applicationFolder}/I{$name}AppService.php", $interfaceContent);
         $this->info("Created {$applicationFolder}/Contracts/I{$name}AppService.php");
+
         return $interfaceName;
     }
 
     private function createAppServiceClass(Filesystem $filesystem, string $applicationFolder, string $name, string $plural, string $repository, string $dtoClass, string $dtoListClass, string $dtoPaginatedClass, string $modelClass, string $interfaceName)
     {
         $className = "{$name}AppService";
+        $applicationNamespace = PackageConfig::applicationNamespace($plural);
+        $contractsNamespace = PackageConfig::applicationNamespace("{$plural}\\Contracts");
+        $domainNamespace = PackageConfig::domainNamespace($plural);
         $appServiceClass = "<?php
 
-namespace Core\\Application\\{$plural};
+namespace {$applicationNamespace};
 
-use Core\\Application\\{$plural}\\Contracts\\{$dtoClass};
-use Core\\Application\\{$plural}\\Contracts\\{$dtoListClass};
-use Core\\Application\\{$plural}\\Contracts\\{$dtoPaginatedClass};
+use {$contractsNamespace}\\{$dtoClass};
+use {$contractsNamespace}\\{$dtoListClass};
+use {$contractsNamespace}\\{$dtoPaginatedClass};
 use Incoder\\DDD\\Application\\Services\\AppServiceBase;
-use Core\\Domain\\{$plural}\\{$repository};
-use Core\\Domain\\{$plural}\\{$modelClass};
+use {$domainNamespace}\\{$repository};
+use {$domainNamespace}\\{$modelClass};
 use Psr\Log\LoggerInterface;
 use Illuminate\Contracts\Auth\Guard;
 
@@ -246,29 +260,31 @@ class {$className} extends AppServiceBase implements {$interfaceName}
 
     private function createDomainFolder(Filesystem $filesystem, string $plural): string
     {
-        $domainFolder = base_path("core/Domain/{$plural}");
-        $filesystem->ensureDirectoryExists(base_path('core/Domain'));
+        $domainFolder = base_path(PackageConfig::domainPath($plural));
+        $filesystem->ensureDirectoryExists(base_path(PackageConfig::domainPath()));
         $filesystem->ensureDirectoryExists($domainFolder);
+
         return $domainFolder;
     }
 
     private function createModelClass(Filesystem $filesystem, string $domainFolder, string $name, string $type, string $plural, string $format, string $incrementing): string
     {
         $className = "{$name}";
+        $domainNamespace = PackageConfig::domainNamespace($plural);
         $modelClass = "<?php
 
-namespace Core\\Domain\\{$plural};
+namespace {$domainNamespace};
 
-use Incoder\\DDD\\Domain\\Entities\\" . ($type === 'aggregate' ? 'AggregateRoot' : 'Entity') . ";
+use Incoder\\DDD\\Domain\\Entities\\".($type === 'aggregate' ? 'AggregateRoot' : 'Entity').";
 
-class {$name} extends " . ($type === 'aggregate' ? 'AggregateRoot' : 'Entity') . "
+class {$name} extends ".($type === 'aggregate' ? 'AggregateRoot' : 'Entity').'
 {
-    " . ($format === 'string' ? "protected \$keyType = '$format';" : "") . "
+    '.($format === 'string' ? "protected \$keyType = '$format';" : '').'
 
-    " . ($incrementing === 'true' ? "public \$incrementing = $incrementing;" : "") . "
+    '.($incrementing === 'true' ? "public \$incrementing = $incrementing;" : '').'
     // Add properties as fillables and methods here
 }
-";
+';
         $filesystem->put("{$domainFolder}/{$name}.php", $modelClass);
         $this->info("Created Domain Model for {$name}.");
 
@@ -277,9 +293,10 @@ class {$name} extends " . ($type === 'aggregate' ? 'AggregateRoot' : 'Entity') .
 
     private function createRepositoryInterface(Filesystem $filesystem, string $domainFolder, string $name, string $plural): string
     {
+        $domainNamespace = PackageConfig::domainNamespace($plural);
         $interfaceClass = "<?php
 
-namespace Core\\Domain\\{$plural};
+namespace {$domainNamespace};
 
 use Incoder\\DDD\\Domain\\Repositories\\IRepository;
 
@@ -299,20 +316,23 @@ interface I{$name}Repository extends IRepository
 
     private function createInfraFolder(Filesystem $filesystem): string
     {
-        $infraFolder = base_path("core/Infrastructure/Eloquent/Repositories");
-        $filesystem->ensureDirectoryExists(base_path('core/Infrastructure/Eloquent'));
+        $infraFolder = base_path(PackageConfig::infrastructureRepositoryPath());
+        $filesystem->ensureDirectoryExists(dirname($infraFolder));
         $filesystem->ensureDirectoryExists($infraFolder);
+
         return $infraFolder;
     }
 
     private function createRepositoryImplementation(Filesystem $filesystem, string $infraFolder, string $name, string $plural): void
     {
+        $infrastructureNamespace = PackageConfig::infrastructureRepositoryNamespace();
+        $domainNamespace = PackageConfig::domainNamespace($plural);
         $repositoryClass = "<?php
 
-namespace Core\\Infrastructure\\Eloquent\\Repositories;
+namespace {$infrastructureNamespace};
 
-use Core\\Domain\\{$plural}\\{$name};
-use Core\\Domain\\{$plural}\\I{$name}Repository;
+use {$domainNamespace}\\{$name};
+use {$domainNamespace}\\I{$name}Repository;
 use Incoder\\DDD\\Infrastructure\\Repositories\\EloquentRepositoryBase;
 
 class {$name}Repository extends EloquentRepositoryBase implements I{$name}Repository
@@ -329,12 +349,12 @@ class {$name}Repository extends EloquentRepositoryBase implements I{$name}Reposi
 
     private function createMigration(Filesystem $filesystem, string $name, string $plural, string $format, string $schema): void
     {
-        $migrationName = 'create_' . Str::snake($plural) . '_table';
-        $migrationClassName = 'Create' . $plural . 'Table';
+        $migrationName = 'create_'.Str::snake($plural).'_table';
+        $migrationClassName = 'Create'.$plural.'Table';
         $migrationFolder = base_path('database/migrations');
         $filesystem->ensureDirectoryExists($migrationFolder);
 
-        $migrationFile = date('Y_m_d_His') . "_{$migrationName}.php";
+        $migrationFile = date('Y_m_d_His')."_{$migrationName}.php";
         $migrationContent = "<?php
 
 use Illuminate\\Database\\Migrations\\Migration;
@@ -345,8 +365,8 @@ class {$migrationClassName} extends Migration
 {
     public function up(): void
     {
-        Schema::create('{$schema}." . Str::snake($plural) . "', function (Blueprint \$table) {
-            " . ($format === "int" ? '$table->id();' : '$table->uuid("id")->primary();') . "
+        Schema::create('{$schema}.".Str::snake($plural)."', function (Blueprint \$table) {
+            ".($format === 'int' ? '$table->id();' : '$table->uuid("id")->primary();')."
             \$table->softDeletes();
             \$table->timestamps();
         });
@@ -354,7 +374,7 @@ class {$migrationClassName} extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('{$schema}." . Str::snake($plural) . "');
+        Schema::dropIfExists('{$schema}.".Str::snake($plural)."');
     }
 }
 ";

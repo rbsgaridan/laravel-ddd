@@ -3,18 +3,57 @@
   "description": "Domain-Driven Design (DDD) Library for Laravel inspired by ABP Framework",
   "type": "library",
   "license": "MIT",
+  "keywords": [
+    "clean-architecture",
+    "ddd",
+    "domain-driven-design",
+    "laravel",
+    "openapi"
+  ],
   "autoload": {
     "psr-4": {
       "Incoder\\DDD\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Incoder\\DDD\\Tests\\": "tests/"
+    }
+  },
   "require": {
     "php": "^8.3",
-    "illuminate/support": "^12.21",
+    "illuminate/auth": "^12.21",
+    "illuminate/console": "^12.21",
     "illuminate/database": "^12.21",
+    "illuminate/filesystem": "^12.21",
+    "illuminate/http": "^12.21",
+    "illuminate/routing": "^12.21",
+    "illuminate/support": "^12.21",
     "ramsey/uuid": "^4.7 || ^5.0",
+    "spatie/laravel-activitylog": "^4.10",
     "spatie/laravel-data": "^4.17",
-    "spatie/laravel-activitylog": "^4.10"
+    "symfony/finder": "^7.0",
+    "symfony/process": "^7.0"
+  },
+  "require-dev": {
+    "larastan/larastan": "^3.0",
+    "laravel/pint": "^1.17",
+    "orchestra/testbench": "^10.0",
+    "phpunit/phpunit": "^11.5"
+  },
+  "suggest": {
+    "ext-soap": "Required to use SSRS reporting support.",
+    "spatie/laravel-permission": "Recommended when using the RequiresPermission attribute."
+  },
+  "scripts": {
+    "analyse": "vendor/bin/phpstan analyse --memory-limit=1G",
+    "format": "vendor/bin/pint",
+    "lint": "vendor/bin/pint --test",
+    "test": "vendor/bin/phpunit --configuration phpunit.xml.dist",
+    "validate:composer": "composer validate --strict"
+  },
+  "config": {
+    "sort-packages": true
   },
   "extra": {
     "laravel": {
@@ -23,7 +62,6 @@
       ]
     }
   },
-  "minimum-stability": "dev",
   "prefer-stable": true,
   "authors": [
     {

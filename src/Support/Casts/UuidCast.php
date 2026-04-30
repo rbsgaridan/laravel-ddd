@@ -1,4 +1,5 @@
 <?php
+
 namespace Incoder\DDD\Support\Casts;
 
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;

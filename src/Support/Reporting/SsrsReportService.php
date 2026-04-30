@@ -10,8 +10,11 @@ use Symfony\Component\HttpFoundation\Response;
 class SsrsReportService implements IReportService
 {
     protected string $baseUrl;
+
     protected string $username;
+
     protected string $password;
+
     protected int $timeout;
 
     public function __construct()
@@ -43,10 +46,11 @@ class SsrsReportService implements IReportService
     /**
      * Generate a report and return the PDF content
      *
-     * @param string $folderName The folder path in SSRS (e.g., '/Reports/HR')
-     * @param string $reportName The report file name (e.g., 'EmployeeReport')
-     * @param array $parameters Report parameters as key-value pairs
+     * @param  string  $folderName  The folder path in SSRS (e.g., '/Reports/HR')
+     * @param  string  $reportName  The report file name (e.g., 'EmployeeReport')
+     * @param  array  $parameters  Report parameters as key-value pairs
      * @return string Binary PDF content
+     *
      * @throws \Exception
      */
     public function generatePdfReport(string $folderName, string $reportName, array $parameters = []): string
@@ -63,15 +67,15 @@ class SsrsReportService implements IReportService
             ]);
 
             // Use SOAP API for report rendering
-            $soapUrl = $this->baseUrl . '/ReportExecution2005.asmx?wsdl';
-            
+            $soapUrl = $this->baseUrl.'/ReportExecution2005.asmx?wsdl';
+
             Log::info('Creating SOAP Client', ['wsdl_url' => $soapUrl]);
 
             // Create stream context with authentication headers
             $streamContext = stream_context_create([
                 'http' => [
-                    'header' => 'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password)
-                ]
+                    'header' => 'Authorization: Basic '.base64_encode($this->username.':'.$this->password),
+                ],
             ]);
 
             $soapClient = new \SoapClient($soapUrl, [
@@ -88,13 +92,13 @@ class SsrsReportService implements IReportService
 
             // Load the report
             Log::info('Loading report', ['path' => $reportPath]);
-            
+
             $loadParams = [
                 'Report' => $reportPath,
                 'HistoryID' => null,
             ];
             $execInfo = $soapClient->LoadReport($loadParams);
-            
+
             // Log the full response to debug
             Log::info('LoadReport response', [
                 'response' => $execInfo,
@@ -105,15 +109,15 @@ class SsrsReportService implements IReportService
             // Try to get ExecutionID from different possible locations
             $executionId = null;
             if (is_object($execInfo)) {
-                $executionId = $execInfo->ExecutionID 
-                    ?? $execInfo->executionInfo->ExecutionID 
+                $executionId = $execInfo->ExecutionID
+                    ?? $execInfo->executionInfo->ExecutionID
                     ?? $execInfo->ExecutionInfo->ExecutionID
                     ?? null;
             }
-            
+
             Log::info('Report loaded', ['execution_id' => $executionId]);
 
-            if (!$executionId) {
+            if (! $executionId) {
                 // Log SOAP request/response for debugging
                 Log::error('Failed to extract ExecutionID', [
                     'last_request' => $soapClient->__getLastRequest(),
@@ -130,7 +134,7 @@ class SsrsReportService implements IReportService
             );
 
             // Set parameters if provided
-            if (!empty($parameters)) {
+            if (! empty($parameters)) {
                 $paramValues = [];
                 foreach ($parameters as $name => $value) {
                     $paramValues[] = [
@@ -151,7 +155,7 @@ class SsrsReportService implements IReportService
 
             // Render the report as PDF
             Log::info('Rendering report to PDF');
-            
+
             $soapClient->__setSoapHeaders($executionHeader);
             $renderParams = [
                 'Format' => 'PDF',
@@ -159,7 +163,7 @@ class SsrsReportService implements IReportService
             ];
             $result = $soapClient->Render($renderParams);
 
-            if (!isset($result->Result)) {
+            if (! isset($result->Result)) {
                 throw new \Exception('SOAP response did not contain Result');
             }
 
@@ -191,17 +195,17 @@ class SsrsReportService implements IReportService
     /**
      * Stream a report directly to the browser
      *
-     * @param string $folderName The folder path in SSRS
-     * @param string $reportName The report file name
-     * @param array $parameters Report parameters as key-value pairs
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @param  string  $folderName  The folder path in SSRS
+     * @param  string  $reportName  The report file name
+     * @param  array  $parameters  Report parameters as key-value pairs
+     *
      * @throws \Exception
      */
     public function streamPdfReport(string $folderName, string $reportName, array $parameters = []): Response
     {
         $pdfContent = $this->generatePdfReport($folderName, $reportName, $parameters);
 
-        $filename = $this->sanitizeFilename($reportName) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = $this->sanitizeFilename($reportName).'_'.now()->format('YmdHis').'.pdf';
 
         return response($pdfContent, 200)
             ->header('Content-Type', 'application/pdf')
@@ -214,9 +218,9 @@ class SsrsReportService implements IReportService
     /**
      * Get report metadata/information
      *
-     * @param string $folderName The folder path in SSRS
-     * @param string $reportName The report file name
-     * @return array
+     * @param  string  $folderName  The folder path in SSRS
+     * @param  string  $reportName  The report file name
+     *
      * @throws \Exception
      */
     public function getReportInfo(string $folderName, string $reportName): array
@@ -227,8 +231,8 @@ class SsrsReportService implements IReportService
             Log::info('SSRS SOAP GetReportInfo', ['report_path' => $reportPath]);
 
             // Use ReportService2010 SOAP API
-            $soapUrl = $this->baseUrl . '/ReportService2010.asmx?wsdl';
-            
+            $soapUrl = $this->baseUrl.'/ReportService2010.asmx?wsdl';
+
             $soapClient = new \SoapClient($soapUrl, [
                 'login' => $this->username,
                 'password' => $this->password,
@@ -265,7 +269,7 @@ class SsrsReportService implements IReportService
                 'report_name' => $reportName,
                 'exists' => null,
                 'metadata' => null,
-                'note' => 'Could not retrieve metadata: ' . $e->getMessage(),
+                'note' => 'Could not retrieve metadata: '.$e->getMessage(),
             ];
         } catch (\Exception $e) {
             Log::error('SSRS Get Report Info Exception', [
@@ -280,15 +284,13 @@ class SsrsReportService implements IReportService
 
     /**
      * Test connection to SSRS
-     *
-     * @return bool
      */
     public function testConnection(): bool
     {
         try {
             // First, try to access WSDL directly with cURL to diagnose auth issues
-            $testUrl = $this->baseUrl . '/ReportService2010.asmx?wsdl';
-            
+            $testUrl = $this->baseUrl.'/ReportService2010.asmx?wsdl';
+
             Log::info('Testing SSRS Connection with cURL', [
                 'url' => $testUrl,
                 'username' => $this->username,
@@ -298,11 +300,11 @@ class SsrsReportService implements IReportService
             $ch = curl_init($testUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC | CURLAUTH_NTLM);
-            curl_setopt($ch, CURLOPT_USERPWD, $this->username . ':' . $this->password);
+            curl_setopt($ch, CURLOPT_USERPWD, $this->username.':'.$this->password);
             curl_setopt($ch, CURLOPT_TIMEOUT, 10);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
@@ -311,7 +313,7 @@ class SsrsReportService implements IReportService
             Log::info('cURL Test Result', [
                 'http_code' => $httpCode,
                 'response_length' => strlen($response),
-                'has_error' => !empty($error),
+                'has_error' => ! empty($error),
                 'error' => $error,
             ]);
 
@@ -321,6 +323,7 @@ class SsrsReportService implements IReportService
                     'message' => 'Check username/password and authentication method (Basic vs NTLM)',
                     'username_format' => 'Try: DOMAIN\username or user@domain.com or just username',
                 ]);
+
                 return false;
             }
 
@@ -329,18 +332,19 @@ class SsrsReportService implements IReportService
                     'http_code' => $httpCode,
                     'error' => $error,
                 ]);
+
                 return false;
             }
 
             // If cURL succeeded, try SOAP client
-            $soapUrl = $this->baseUrl . '/ReportService2010.asmx?wsdl';
-            
+            $soapUrl = $this->baseUrl.'/ReportService2010.asmx?wsdl';
+
             Log::info('Testing SSRS SOAP Connection', ['wsdl_url' => $soapUrl]);
 
             $streamContext = stream_context_create([
                 'http' => [
-                    'header' => 'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password)
-                ]
+                    'header' => 'Authorization: Basic '.base64_encode($this->username.':'.$this->password),
+                ],
             ]);
 
             $soapClient = new \SoapClient($soapUrl, [
@@ -356,7 +360,7 @@ class SsrsReportService implements IReportService
 
             // If SOAP client created successfully, connection works
             Log::info('SSRS SOAP Connection Successful', ['method' => 'WSDL loaded']);
-            
+
             return true;
         } catch (\SoapFault $e) {
             Log::error('SSRS SOAP Connection Test Failed', [
@@ -365,34 +369,31 @@ class SsrsReportService implements IReportService
                 'faultstring' => $e->faultstring ?? null,
                 'detail' => $e->detail ?? null,
             ]);
+
             return false;
         } catch (\Exception $e) {
             Log::error('SSRS Connection Test Failed', [
                 'message' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
 
     /**
      * Build the complete report URL with parameters
-     *
-     * @param string $folderName
-     * @param string $reportName
-     * @param array $parameters
-     * @return string
      */
     protected function buildReportUrl(string $folderName, string $reportName, array $parameters = []): string
     {
         $reportPath = $this->buildReportPath($folderName, $reportName);
-        
+
         // Use ReportServer rendering endpoint (works with SSRS 2008+)
         // Format: http://server/ReportServer?/FolderPath/ReportName&rs:Format=PDF
-        $url = $this->baseUrl . '?' . $reportPath . '&rs:Format=PDF&rs:Command=Render';
+        $url = $this->baseUrl.'?'.$reportPath.'&rs:Format=PDF&rs:Command=Render';
 
-        if (!empty($parameters)) {
+        if (! empty($parameters)) {
             foreach ($parameters as $key => $value) {
-                $url .= '&' . urlencode($key) . '=' . urlencode($value);
+                $url .= '&'.urlencode($key).'='.urlencode($value);
             }
         }
 
@@ -401,28 +402,22 @@ class SsrsReportService implements IReportService
 
     /**
      * Build the report path
-     *
-     * @param string $folderName
-     * @param string $reportName
-     * @return string
      */
     protected function buildReportPath(string $folderName, string $reportName): string
     {
-        $folder = '/' . trim($folderName, '/');
+        $folder = '/'.trim($folderName, '/');
         $report = trim($reportName, '/');
-        
-        return $folder . '/' . $report;
+
+        return $folder.'/'.$report;
     }
 
     /**
      * Sanitize filename for safe download
-     *
-     * @param string $filename
-     * @return string
      */
     protected function sanitizeFilename(string $filename): string
     {
         $filename = preg_replace('/[^a-zA-Z0-9_-]/', '_', $filename);
+
         return substr($filename, 0, 200);
     }
 }

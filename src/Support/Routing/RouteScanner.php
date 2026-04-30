@@ -2,73 +2,75 @@
 
 namespace Incoder\DDD\Support\Routing;
 
+use Illuminate\Support\Facades\Route;
+use Incoder\DDD\Application\Services\AppServiceBase;
+use Incoder\DDD\Support\Attributes\RouteAttribute;
+use Incoder\DDD\Support\Helper\PackageConfig;
 use ReflectionClass;
 use ReflectionMethod;
-use Incoder\DDD\Application\Services\AppServiceBase;
 use Symfony\Component\Finder\Finder;
-use Illuminate\Support\Facades\Route;
-use Incoder\DDD\Support\Attributes\RouteAttribute;
 
 /**
  * Summary of RouteScanner
  * This class is responsible for scanning and registering routes for controllers and application services.
  */
 class RouteScanner
-{   
+{
     /**
      * Summary of __construct
      * This constructor initializes the RouteScanner with the path to the controller files.
-     * @param string $controllerPath
      */
     public function __construct(
         private string $controllerPath
     ) {}
 
     protected $excludeMethodsFromPHP = [
-            '__construct',
-            '__destruct',
-            '__call',
-            '__callStatic',
-            '__get',
-            '__set',
-            '__isset',
-            '__unset',
-            '__sleep',
-            '__wakeup',
-            '__serialize',
-            '__unserialize',
-            '__toString',
-            '__debugInfo',
-            '__clone'
-        ];
-    
+        '__construct',
+        '__destruct',
+        '__call',
+        '__callStatic',
+        '__get',
+        '__set',
+        '__isset',
+        '__unset',
+        '__sleep',
+        '__wakeup',
+        '__serialize',
+        '__unserialize',
+        '__toString',
+        '__debugInfo',
+        '__clone',
+    ];
+
     /**
      * Summary of register
      * This method is responsible for registering routes for the found controller and application service classes.
-     * @return void
      */
     public function register(): void
     {
-        foreach ($this->findControllerClasses() as $class)
-        {
+        foreach ($this->findControllerClasses() as $class) {
             $this->registerRoutesFromController($class);
         }
-        
+
     }
 
     /**
      * Summary of findControllerClasses
      * This method is responsible for finding all controller classes in the specified directory.
+     *
      * @return string[]
      */
     private function findControllerClasses(): array
     {
+        if (! is_dir($this->controllerPath)) {
+            return [];
+        }
+
         $classes = [];
-        $finder = new Finder();
+        $finder = new Finder;
         $finder->files()->in($this->controllerPath)->name('*Controller.php');
 
-        foreach ($finder as $file)
-        {
+        foreach ($finder as $file) {
             $fqcn = $this->getClassFromFile($file->getRealPath());
             if ($fqcn && class_exists($fqcn)) {
                 $classes[] = $fqcn;
@@ -81,21 +83,27 @@ class RouteScanner
     /**
      * Summary of findAppServiceClasses
      * This method is responsible for finding all application service classes in the specified directory.
+     *
      * @return string[]
      */
     private function findAppServiceClasses(): array
     {
+        $applicationPath = base_path(PackageConfig::applicationPath());
+
+        if (! is_dir($applicationPath)) {
+            return [];
+        }
+
         $classes = [];
-        $finder = new Finder();
+        $finder = new Finder;
 
         $finder
             ->files()
-            ->in(base_path('core/Application'))
+            ->in($applicationPath)
             ->name('*AppService.php')
             ->notName('I*AppService.php');
 
-        foreach ($finder as $file)
-        {
+        foreach ($finder as $file) {
             $fqcn = $this->getClassFromFile($file->getRealPath());
             if ($fqcn && class_exists($fqcn)) {
                 $reflection = new ReflectionClass($fqcn);
@@ -108,12 +116,9 @@ class RouteScanner
         return $classes;
     }
 
-
     /**
      * Summary of getClassFromFile
      * This method extracts the fully qualified class name from a PHP file.
-     * @param string $path
-     * @return string|null
      */
     private function getClassFromFile(string $path): ?string
     {
@@ -121,7 +126,7 @@ class RouteScanner
 
         if (preg_match('/namespace\s+(.+?);/s', $content, $nsMatch) &&
             preg_match('/\bclass\s+([^\s]+)/', $content, $classMatch)) {
-            return $nsMatch[1] . '\\' . $classMatch[1];
+            return $nsMatch[1].'\\'.$classMatch[1];
         }
 
         return null;
@@ -135,7 +140,7 @@ class RouteScanner
             return;
         }
 
-        $existingRoutes = collect(Route::getRoutes())->map(fn($r) => $r->getActionName())->all();
+        $existingRoutes = collect(Route::getRoutes())->map(fn ($r) => $r->getActionName())->all();
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             if (in_array($method->getName(), $this->excludeMethodsFromPHP)) {
@@ -146,7 +151,7 @@ class RouteScanner
                 continue;
             }
 
-            $fqcnAction = $class . '@' . $method->getName();
+            $fqcnAction = $class.'@'.$method->getName();
             $invokeAction = $method->getName() === '__invoke' ? $class : null;
             if (
                 in_array($fqcnAction, $existingRoutes, true) ||
@@ -162,18 +167,15 @@ class RouteScanner
                 $route = $attr->newInstance();
 
                 \Route::match($route->methods, $route->uri, [$class, $method->getName()])
-                        ->name($route->name ?? null)
-                        ->middleware($route->middleware);
-                
+                    ->name($route->name ?? null)
+                    ->middleware($route->middleware);
+
             }
         }
     }
 
-
     /**
      * Summary of registerRoutesFromAppService
-     * @param string $class
-     * @return void
      */
     // private function registerRoutesFromAppService(string $class): void
     // {
@@ -185,7 +187,6 @@ class RouteScanner
 
     //     $serviceName = strtolower(str_replace('AppService', '', $reflection->getShortName()));
     //     $baseUri = "/$serviceName";
-
 
     //     foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
     //         $action = $method->getName();
@@ -228,7 +229,6 @@ class RouteScanner
     //     }
     // }
 
-
     /**
      * Registers CRUD routes automatically
      */
@@ -246,7 +246,7 @@ class RouteScanner
 
         foreach ($crudMap as [$method, $uri, $action]) {
             if (method_exists($class, $action)) {
-                $crudRoute = new RouteAttribute($method, $uri, $route->name ? $route->name . '.' . $action : null, $route->middleware);
+                $crudRoute = new RouteAttribute($method, $uri, $route->name ? $route->name.'.'.$action : null, $route->middleware);
                 $this->registerRouteInGroups($crudRoute, [$class, $action]);
             }
         }
@@ -260,12 +260,12 @@ class RouteScanner
     {
         foreach ($route->middleware as $group) {
             Route::middleware($group)->group(function () use ($route, $action, $group) {
-                $uri = $group === 'api' && !str_starts_with($route->uri, '/api')
-                    ? '/api' . $route->uri
+                $uri = $group === 'api' && ! str_starts_with($route->uri, '/api')
+                    ? '/api'.$route->uri
                     : $route->uri;
 
                 Route::match($route->methods, $uri, $action)
-                    ->name($route->name ? ($group . '.' . $route->name) : null)
+                    ->name($route->name ? ($group.'.'.$route->name) : null)
                     ->middleware(array_values(array_diff($route->middleware, [$group])));
             });
         }

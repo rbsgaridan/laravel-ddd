@@ -13,7 +13,7 @@ class EmailAddress extends ValueObject
 
     public function __construct(string $email)
     {
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new InvalidArgumentException("Invalid email address: $email");
         }
 
@@ -27,7 +27,7 @@ class EmailAddress extends ValueObject
 
     public function domain(): string
     {
-        return substr(strrchr($this->value, "@"), 1);
+        return substr(strrchr($this->value, '@'), 1);
     }
 
     public function __toString(): string

@@ -2,19 +2,18 @@
 
 namespace Incoder\DDD\Support\OpenApi;
 
-use ReflectionClass;
-use ReflectionMethod;
-use ReflectionNamedType;
 use Incoder\DDD\Support\Attributes\FromBody;
 use Incoder\DDD\Support\Attributes\FromQuery;
-use Incoder\DDD\Support\Attributes\RouteAttribute;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiBody;
-use Incoder\DDD\Support\Attributes\OpenApi\ApiHide;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiOperation;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiParam;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiQuery;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiResponse;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiSecurity;
+use Incoder\DDD\Support\Attributes\RouteAttribute;
+use ReflectionClass;
+use ReflectionMethod;
+use ReflectionNamedType;
 
 /**
  * Extracts a single OpenAPI path-item operation object from a controller method
@@ -31,10 +30,10 @@ class RouteDocExtractor
     private array $collectedSchemas = [];
 
     public function __construct(
-        private readonly ReflectionClass  $class,
+        private readonly ReflectionClass $class,
         private readonly ReflectionMethod $method,
-        private readonly RouteAttribute   $route,
-        private readonly SchemaInferrer   $schemaInferrer
+        private readonly RouteAttribute $route,
+        private readonly SchemaInferrer $schemaInferrer
     ) {}
 
     // -----------------------------------------------------------------------
@@ -44,29 +43,29 @@ class RouteDocExtractor
     /**
      * Build the OA3 operation object.
      *
-     * @param string $defaultTag  Inferred tag from the controller name
-     * @return array              OA3 operation array + '__schemas' sidecar key
+     * @param  string  $defaultTag  Inferred tag from the controller name
+     * @return array OA3 operation array + '__schemas' sidecar key
      */
     public function extract(string $defaultTag): array
     {
         $operation = [
             'operationId' => $this->buildOperationId(),
-            'tags'        => [$defaultTag],
-            'summary'     => $this->inferSummary(),
+            'tags' => [$defaultTag],
+            'summary' => $this->inferSummary(),
             'description' => '',
-            'parameters'  => $this->buildParameters(),
-            'responses'   => $this->buildResponses(),
-            'security'    => $this->buildSecurity(),
+            'parameters' => $this->buildParameters(),
+            'responses' => $this->buildResponses(),
+            'security' => $this->buildSecurity(),
         ];
 
         // ── ApiOperation override ────────────────────────────────────────
         $opAttrs = $this->method->getAttributes(ApiOperation::class);
-        if (!empty($opAttrs)) {
+        if (! empty($opAttrs)) {
             /** @var ApiOperation $op */
             $op = $opAttrs[0]->newInstance();
-            $operation['summary']     = $op->summary;
+            $operation['summary'] = $op->summary;
             $operation['description'] = $op->description;
-            if (!empty($op->tags)) {
+            if (! empty($op->tags)) {
                 $operation['tags'] = $op->tags;
             }
             if ($op->deprecated) {
@@ -97,14 +96,15 @@ class RouteDocExtractor
 
     private function buildOperationId(): string
     {
-        return $this->class->getShortName() . '_' . $this->method->getName();
+        return $this->class->getShortName().'_'.$this->method->getName();
     }
 
     private function inferSummary(): string
     {
-        $name  = $this->method->getName();
+        $name = $this->method->getName();
         // camelCase → space-separated words: listActiveUsers → List Active Users
-        $words = preg_replace_callback('/([A-Z])/', fn ($m) => ' ' . $m[1], $name);
+        $words = preg_replace_callback('/([A-Z])/', fn ($m) => ' '.$m[1], $name);
+
         return ucwords(strtolower(trim($words)));
     }
 
@@ -117,11 +117,11 @@ class RouteDocExtractor
         // 1. Auto-detect path params from {param} in URI
         preg_match_all('/\{(\w+)\}/', $this->route->uri, $matches);
         foreach ($matches[1] ?? [] as $name) {
-            $params['path_' . $name] = [
-                'name'     => $name,
-                'in'       => 'path',
+            $params['path_'.$name] = [
+                'name' => $name,
+                'in' => 'path',
                 'required' => true,
-                'schema'   => ['type' => 'string'],
+                'schema' => ['type' => 'string'],
             ];
         }
 
@@ -130,10 +130,10 @@ class RouteDocExtractor
             /** @var ApiParam $p */
             $p = $attr->newInstance();
             $entry = [
-                'name'     => $p->name,
-                'in'       => 'path',
+                'name' => $p->name,
+                'in' => 'path',
                 'required' => true,
-                'schema'   => ['type' => $p->type],
+                'schema' => ['type' => $p->type],
             ];
             if ($p->description !== '') {
                 $entry['description'] = $p->description;
@@ -141,7 +141,7 @@ class RouteDocExtractor
             if ($p->example !== null) {
                 $entry['example'] = $p->example;
             }
-            $params['path_' . $p->name] = $entry;
+            $params['path_'.$p->name] = $entry;
         }
 
         // 3. Auto-detect query params from #[FromQuery] on method parameters
@@ -149,16 +149,16 @@ class RouteDocExtractor
             if (empty($param->getAttributes(FromQuery::class))) {
                 continue;
             }
-            $pName   = $param->getName();
-            $type    = $param->getType();
+            $pName = $param->getName();
+            $type = $param->getType();
             $typeName = ($type instanceof ReflectionNamedType) ? $type->getName() : 'string';
             $entry = [
-                'name'     => $pName,
-                'in'       => 'query',
-                'required' => !$param->isOptional() && !($type?->allowsNull()),
-                'schema'   => $this->schemaInferrer->phpTypeNameToSchema($typeName),
+                'name' => $pName,
+                'in' => 'query',
+                'required' => ! $param->isOptional() && ! ($type?->allowsNull()),
+                'schema' => $this->schemaInferrer->phpTypeNameToSchema($typeName),
             ];
-            $params['query_' . $pName] = $entry;
+            $params['query_'.$pName] = $entry;
         }
 
         // 4. Explicit #[ApiQuery] overrides / additions
@@ -166,10 +166,10 @@ class RouteDocExtractor
             /** @var ApiQuery $q */
             $q = $attr->newInstance();
             $entry = [
-                'name'     => $q->name,
-                'in'       => 'query',
+                'name' => $q->name,
+                'in' => 'query',
                 'required' => $q->required,
-                'schema'   => ['type' => $q->type],
+                'schema' => ['type' => $q->type],
             ];
             if ($q->description !== '') {
                 $entry['description'] = $q->description;
@@ -177,7 +177,7 @@ class RouteDocExtractor
             if ($q->example !== null) {
                 $entry['example'] = $q->example;
             }
-            $params['query_' . $q->name] = $entry;
+            $params['query_'.$q->name] = $entry;
         }
 
         return array_values($params);
@@ -189,19 +189,20 @@ class RouteDocExtractor
     {
         // Priority 1: explicit #[ApiBody] on the method
         $bodyAttrs = $this->method->getAttributes(ApiBody::class);
-        if (!empty($bodyAttrs)) {
+        if (! empty($bodyAttrs)) {
             /** @var ApiBody $body */
-            $body      = $bodyAttrs[0]->newInstance();
+            $body = $bodyAttrs[0]->newInstance();
             $shortName = class_basename($body->class);
             $this->collectedSchemas[$shortName] = $this->schemaInferrer->fromClass($body->class);
 
             $result = [
                 'required' => $body->required,
-                'content'  => ['application/json' => ['schema' => ['$ref' => "#/components/schemas/{$shortName}"]]],
+                'content' => ['application/json' => ['schema' => ['$ref' => "#/components/schemas/{$shortName}"]]],
             ];
             if ($body->description !== '') {
                 $result['description'] = $body->description;
             }
+
             return $result;
         }
 
@@ -211,7 +212,7 @@ class RouteDocExtractor
                 continue;
             }
             $type = $param->getType();
-            if (!($type instanceof ReflectionNamedType) || !class_exists($type->getName())) {
+            if (! ($type instanceof ReflectionNamedType) || ! class_exists($type->getName())) {
                 continue;
             }
             $className = $type->getName();
@@ -219,8 +220,8 @@ class RouteDocExtractor
             $this->collectedSchemas[$shortName] = $this->schemaInferrer->fromClass($className);
 
             return [
-                'required' => !$type->allowsNull(),
-                'content'  => ['application/json' => ['schema' => ['$ref' => "#/components/schemas/{$shortName}"]]],
+                'required' => ! $type->allowsNull(),
+                'content' => ['application/json' => ['schema' => ['$ref' => "#/components/schemas/{$shortName}"]]],
             ];
         }
 
@@ -231,13 +232,13 @@ class RouteDocExtractor
 
     private function buildResponses(): array
     {
-        $responses  = [];
-        $respAttrs  = $this->method->getAttributes(ApiResponse::class, \ReflectionAttribute::IS_INSTANCEOF);
+        $responses = [];
+        $respAttrs = $this->method->getAttributes(ApiResponse::class, \ReflectionAttribute::IS_INSTANCEOF);
 
-        if (!empty($respAttrs)) {
+        if (! empty($respAttrs)) {
             foreach ($respAttrs as $attr) {
                 /** @var ApiResponse $resp */
-                $resp     = $attr->newInstance();
+                $resp = $attr->newInstance();
                 $response = ['description' => $resp->description];
 
                 if ($resp->class !== null && class_exists($resp->class)) {
@@ -266,11 +267,11 @@ class RouteDocExtractor
     {
         // Method-level attribute takes precedence, then class-level
         $methodSec = $this->method->getAttributes(ApiSecurity::class);
-        $classSec  = $this->class->getAttributes(ApiSecurity::class);
+        $classSec = $this->class->getAttributes(ApiSecurity::class);
 
-        $secAttrs = !empty($methodSec) ? $methodSec : $classSec;
+        $secAttrs = ! empty($methodSec) ? $methodSec : $classSec;
 
-        if (!empty($secAttrs)) {
+        if (! empty($secAttrs)) {
             /** @var ApiSecurity $sec */
             $sec = $secAttrs[0]->newInstance();
 

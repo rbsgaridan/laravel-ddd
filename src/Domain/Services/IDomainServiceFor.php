@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Incoder\DDD\Domain\Services;
 
 use Incoder\DDD\Domain\Entities\AggregateRoot;

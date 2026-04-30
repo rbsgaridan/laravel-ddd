@@ -3,9 +3,12 @@
 namespace Incoder\DDD\Support\OpenApi;
 
 use ReflectionClass;
-use ReflectionProperty;
 use ReflectionNamedType;
+use ReflectionProperty;
 use ReflectionUnionType;
+use Spatie\LaravelData\CursorPaginatedDataCollection;
+use Spatie\LaravelData\DataCollection;
+use Spatie\LaravelData\PaginatedDataCollection;
 
 /**
  * Infers a JSON Schema object from a PHP DTO class.
@@ -29,7 +32,7 @@ class SchemaInferrer
      * Build a JSON Schema array for a DTO class.
      * Returns a raw schema (not a $ref) so callers can embed or register it.
      *
-     * @param class-string $className
+     * @param  class-string  $className
      */
     public function fromClass(string $className): array
     {
@@ -37,13 +40,13 @@ class SchemaInferrer
             return $this->cache[$className];
         }
 
-        if (!class_exists($className)) {
+        if (! class_exists($className)) {
             return ['type' => 'object', 'description' => "Unknown class: {$className}"];
         }
 
         $reflection = new ReflectionClass($className);
-        $schema     = ['type' => 'object', 'properties' => []];
-        $required   = [];
+        $schema = ['type' => 'object', 'properties' => []];
+        $required = [];
 
         // Parse static rules() for required / nullable hints
         $rules = $this->parseRules($className);
@@ -52,15 +55,15 @@ class SchemaInferrer
         $constructor = $reflection->getConstructor();
         if ($constructor && count($constructor->getParameters()) > 0) {
             foreach ($constructor->getParameters() as $param) {
-                $name   = $param->getName();
-                $type   = $param->getType();
+                $name = $param->getName();
+                $type = $param->getType();
                 $result = $this->phpTypeToJsonSchema($type);
 
                 $schema['properties'][$name] = $this->applyRuleHints($result, $rules[$name] ?? []);
 
                 $isNullable = $type && $type->allowsNull();
                 $hasDefault = $param->isOptional();
-                if (!$isNullable && !$hasDefault) {
+                if (! $isNullable && ! $hasDefault) {
                     $required[] = $name;
                 }
             }
@@ -70,8 +73,8 @@ class SchemaInferrer
                 if ($prop->isStatic()) {
                     continue;
                 }
-                $name   = $prop->getName();
-                $type   = $prop->getType();
+                $name = $prop->getName();
+                $type = $prop->getType();
                 $result = $this->phpTypeToJsonSchema($type);
 
                 $schema['properties'][$name] = $this->applyRuleHints($result, $rules[$name] ?? []);
@@ -85,7 +88,7 @@ class SchemaInferrer
             }
         }
 
-        if (!empty($required)) {
+        if (! empty($required)) {
             $schema['required'] = array_values(array_unique($required));
         }
 
@@ -101,10 +104,10 @@ class SchemaInferrer
     public function phpTypeNameToJson(string $typeName): string
     {
         return match ($typeName) {
-            'int'    => 'integer',
-            'float'  => 'number',
-            'bool'   => 'boolean',
-            default  => 'string',   // string, mixed, unknown classes
+            'int' => 'integer',
+            'float' => 'number',
+            'bool' => 'boolean',
+            default => 'string',   // string, mixed, unknown classes
         };
     }
 
@@ -115,15 +118,16 @@ class SchemaInferrer
     public function phpTypeNameToSchema(string $typeName, bool $nullable = false): array
     {
         $schema = match ($typeName) {
-            'int'   => ['type' => 'integer'],
+            'int' => ['type' => 'integer'],
             'float' => ['type' => 'number'],
-            'bool'  => ['type' => 'boolean'],
+            'bool' => ['type' => 'boolean'],
             'array' => ['type' => 'array', 'items' => ['type' => 'string']],
             default => ['type' => 'string'],
         };
         if ($nullable) {
             $schema['nullable'] = true;
         }
+
         return $schema;
     }
 
@@ -148,7 +152,7 @@ class SchemaInferrer
 
         /** @var ReflectionNamedType $type */
         $nullable = $type->allowsNull();
-        $name     = $type->getName();
+        $name = $type->getName();
 
         // Bare array type (no generics) → treat as object (map/dictionary)
         // additionalProperties with empty schema allows any value type
@@ -157,15 +161,16 @@ class SchemaInferrer
             if ($nullable) {
                 $schema['nullable'] = true;
             }
+
             return $schema;
         }
 
         $primitiveMap = [
-            'int'    => 'integer',
-            'float'  => 'number',
-            'bool'   => 'boolean',
+            'int' => 'integer',
+            'float' => 'number',
+            'bool' => 'boolean',
             'string' => 'string',
-            'mixed'  => 'string',
+            'mixed' => 'string',
         ];
 
         if (isset($primitiveMap[$name])) {
@@ -173,6 +178,7 @@ class SchemaInferrer
             if ($nullable) {
                 $schema['nullable'] = true;
             }
+
             return $schema;
         }
 
@@ -182,6 +188,7 @@ class SchemaInferrer
             if ($nullable) {
                 $schema['nullable'] = true;
             }
+
             return $schema;
         }
 
@@ -193,18 +200,20 @@ class SchemaInferrer
             if ($nullable) {
                 $schema['nullable'] = true;
             }
+
             return $schema;
         }
 
         // Spatie LaravelData collection types → treat as array of objects
         // (DataCollection is a known class but has no registered schema component)
-        if (is_a($name, \Spatie\LaravelData\DataCollection::class, true) ||
-            is_a($name, \Spatie\LaravelData\CursorPaginatedDataCollection::class, true) ||
-            is_a($name, \Spatie\LaravelData\PaginatedDataCollection::class, true)) {
+        if (is_a($name, DataCollection::class, true) ||
+            is_a($name, CursorPaginatedDataCollection::class, true) ||
+            is_a($name, PaginatedDataCollection::class, true)) {
             $schema = ['type' => 'array', 'items' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']]];
             if ($nullable) {
                 $schema['nullable'] = true;
             }
+
             return $schema;
         }
 
@@ -214,6 +223,7 @@ class SchemaInferrer
             if ($nullable) {
                 return ['nullable' => true, 'allOf' => [['$ref' => "#/components/schemas/{$shortName}"]]];
             }
+
             return ['$ref' => "#/components/schemas/{$shortName}"];
         }
 
@@ -223,12 +233,11 @@ class SchemaInferrer
     /**
      * Pull required/nullable hints from the rules() array.
      *
-     * @param  string $className
-     * @return array<string, string[]>  keyed by property name
+     * @return array<string, string[]> keyed by property name
      */
     private function parseRules(string $className): array
     {
-        if (!method_exists($className, 'rules')) {
+        if (! method_exists($className, 'rules')) {
             return [];
         }
 
@@ -238,7 +247,7 @@ class SchemaInferrer
             return [];
         }
 
-        if (!is_array($raw)) {
+        if (! is_array($raw)) {
             return [];
         }
 
@@ -290,8 +299,8 @@ class SchemaInferrer
             } elseif ($rule === 'date') {
                 $schema['format'] = 'date';
             } elseif (str_starts_with($rule, 'in:')) {
-                $values           = explode(',', substr($rule, 3));
-                $schema['enum']   = $values;
+                $values = explode(',', substr($rule, 3));
+                $schema['enum'] = $values;
             } elseif ($rule === 'integer') {
                 $schema['type'] = 'integer';
             } elseif ($rule === 'boolean') {
@@ -299,7 +308,7 @@ class SchemaInferrer
             } elseif ($rule === 'numeric') {
                 $schema['type'] = 'number';
             } elseif ($rule === 'string') {
-                if (!isset($schema['type'])) {
+                if (! isset($schema['type'])) {
                     $schema['type'] = 'string';
                 }
             }
@@ -312,14 +321,15 @@ class SchemaInferrer
      * Discover all nested DTO class names referenced in a given DTO class.
      * Scans the schema for $ref entries and extracts class names.
      *
-     * @param class-string $className
-     * @return class-string[]  Fully qualified class names of nested DTOs
+     * @param  class-string  $className
+     * @return class-string[] Fully qualified class names of nested DTOs
      */
     public function getNestedDtoClasses(string $className): array
     {
         $schema = $this->fromClass($className);
         $nested = [];
         $this->extractNestedDtos($schema, $nested);
+
         return array_values(array_unique($nested));
     }
 

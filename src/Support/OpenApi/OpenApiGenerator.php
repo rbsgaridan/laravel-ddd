@@ -2,14 +2,14 @@
 
 namespace Incoder\DDD\Support\OpenApi;
 
-use ReflectionClass;
-use ReflectionMethod;
 use Illuminate\Support\Str;
-use Symfony\Component\Finder\Finder;
-use Incoder\DDD\Support\Attributes\RouteAttribute;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiHide;
 use Incoder\DDD\Support\Attributes\OpenApi\ApiTag;
-use Incoder\DDD\Support\OpenApi\AppServiceDocScanner;
+use Incoder\DDD\Support\Attributes\RouteAttribute;
+use Incoder\DDD\Support\Helper\PackageConfig;
+use ReflectionClass;
+use ReflectionMethod;
+use Symfony\Component\Finder\Finder;
 
 /**
  * Main orchestrator for OpenAPI 3.0 spec generation.
@@ -32,7 +32,7 @@ class OpenApiGenerator
 
     public function __construct()
     {
-        $this->schemaInferrer = new SchemaInferrer();
+        $this->schemaInferrer = new SchemaInferrer;
     }
 
     // -----------------------------------------------------------------------
@@ -52,8 +52,8 @@ class OpenApiGenerator
         // }
 
         // ── AppService convention + attributed routes ─────────────────────
-        if (file_exists(base_path('vendor/composer/autoload_classmap.php'))) {
-            $classMap = require base_path('vendor/composer/autoload_classmap.php');
+        $classMap = PackageConfig::loadClassMap();
+        if ($classMap !== []) {
             (new AppServiceDocScanner($this->schemaInferrer))->scan($classMap, $spec);
         }
 
@@ -71,9 +71,10 @@ class OpenApiGenerator
         $seen = [];
         $spec['tags'] = array_values(array_filter($spec['tags'], function ($tag) use (&$seen, $usedTags) {
             $name = $tag['name'];
-            if (isset($seen[$name]) || !isset($usedTags[$name])) {
+            if (isset($seen[$name]) || ! isset($usedTags[$name])) {
                 return false;
             }
+
             return $seen[$name] = true;
         }));
 
@@ -91,20 +92,20 @@ class OpenApiGenerator
     {
         $spec = [
             'openapi' => '3.0.3',
-            'info'    => [
-                'title'       => config('api-docs.title', config('app.name', 'API') . ' API'),
+            'info' => [
+                'title' => config('api-docs.title', config('app.name', 'API').' API'),
                 'description' => config('api-docs.description', ''),
-                'version'     => config('api-docs.version', '1.0.0'),
+                'version' => config('api-docs.version', '1.0.0'),
             ],
             'servers' => $this->buildServers(),
-            'paths'   => [],
+            'paths' => [],
             'components' => [
-                'schemas'         => [],
+                'schemas' => [],
                 'securitySchemes' => config('api-docs.security_schemes', [
                     'sessionAuth' => [
-                        'type'        => 'apiKey',
-                        'in'          => 'cookie',
-                        'name'        => 'laravel_session',
+                        'type' => 'apiKey',
+                        'in' => 'cookie',
+                        'name' => 'laravel_session',
                         'description' => 'Laravel session cookie. Log in at /login first — the browser sends it automatically.',
                     ],
                 ]),
@@ -136,12 +137,12 @@ class OpenApiGenerator
     // -----------------------------------------------------------------------
 
     /**
-     * @return string[]  Fully qualified class names of discovered controllers
+     * @return string[] Fully qualified class names of discovered controllers
      */
     private function findControllerClasses(): array
     {
         $classes = [];
-        $finder  = new Finder();
+        $finder = new Finder;
         $finder->files()->in(app_path('Http/Controllers'))->name('*Controller.php');
 
         foreach ($finder as $file) {
@@ -162,7 +163,7 @@ class OpenApiGenerator
             preg_match('/namespace\s+(.+?);/s', $content, $nsMatch) &&
             preg_match('/\bclass\s+(\w+)/', $content, $classMatch)
         ) {
-            return $nsMatch[1] . '\\' . $classMatch[1];
+            return $nsMatch[1].'\\'.$classMatch[1];
         }
 
         return null;
@@ -182,16 +183,16 @@ class OpenApiGenerator
         }
 
         // Skip if #[ApiHide] on the class
-        if (!empty($reflection->getAttributes(ApiHide::class))) {
+        if (! empty($reflection->getAttributes(ApiHide::class))) {
             return;
         }
 
-        $tag     = $this->resolveTag($reflection);
+        $tag = $this->resolveTag($reflection);
         $tagDesc = $this->resolveTagDescription($reflection);
 
         // Register the tag (de-duplicated later)
         $spec['tags'][] = array_filter([
-            'name'        => $tag,
+            'name' => $tag,
             'description' => $tagDesc,
         ]);
 
@@ -202,7 +203,7 @@ class OpenApiGenerator
             }
 
             // Skip if #[ApiHide] on the method
-            if (!empty($method->getAttributes(ApiHide::class))) {
+            if (! empty($method->getAttributes(ApiHide::class))) {
                 continue;
             }
 
@@ -213,13 +214,13 @@ class OpenApiGenerator
 
             foreach ($routeAttrs as $routeAttr) {
                 /** @var RouteAttribute $route */
-                $route   = $routeAttr->newInstance();
+                $route = $routeAttr->newInstance();
 
-                if (!in_array('api', (array) $route->middleware, true)) {
+                if (! in_array('api', (array) $route->middleware, true)) {
                     continue;
                 }
 
-                $oaPath  = $this->normaliseUri($route->uri);
+                $oaPath = $this->normaliseUri($route->uri);
 
                 $extractor = new RouteDocExtractor(
                     $reflection,
@@ -239,7 +240,7 @@ class OpenApiGenerator
                 // Register each HTTP method as a separate path operation
                 foreach ($route->methods as $httpMethod) {
                     $lcMethod = strtolower($httpMethod);
-                    if (!isset($spec['paths'][$oaPath])) {
+                    if (! isset($spec['paths'][$oaPath])) {
                         $spec['paths'][$oaPath] = [];
                     }
                     $spec['paths'][$oaPath][$lcMethod] = $operation;
@@ -259,7 +260,7 @@ class OpenApiGenerator
     private function resolveTag(ReflectionClass $reflection): string
     {
         $attrs = $reflection->getAttributes(ApiTag::class);
-        if (!empty($attrs)) {
+        if (! empty($attrs)) {
             return $attrs[0]->newInstance()->name;
         }
 
@@ -272,9 +273,10 @@ class OpenApiGenerator
     private function resolveTagDescription(ReflectionClass $reflection): string
     {
         $attrs = $reflection->getAttributes(ApiTag::class);
-        if (!empty($attrs)) {
+        if (! empty($attrs)) {
             return $attrs[0]->newInstance()->description;
         }
+
         return '';
     }
 
@@ -285,7 +287,7 @@ class OpenApiGenerator
      */
     private function normaliseUri(string $uri): string
     {
-        $path = '/' . ltrim(rtrim($uri, '/'), '/');
+        $path = '/'.ltrim(rtrim($uri, '/'), '/');
 
         // {param} is already OA3-compatible; leave as-is
         return $path;

@@ -2,6 +2,7 @@
 
 namespace Incoder\DDD\Support\Routing;
 
+use Illuminate\Support\Facades\Route;
 use Incoder\DDD\Support\Attributes\AppServiceMiddleware;
 use Incoder\DDD\Support\Attributes\FromBody;
 use Incoder\DDD\Support\Attributes\FromQuery;
@@ -10,7 +11,6 @@ use Incoder\DDD\Support\Attributes\RequiresPermission;
 use Incoder\DDD\Support\Attributes\RouteAttribute;
 use ReflectionClass;
 use ReflectionMethod;
-use Illuminate\Support\Facades\Route;
 
 class RouteRegistrar
 {
@@ -24,19 +24,19 @@ class RouteRegistrar
     public function registerCrudRoutes(): void
     {
         $crudRoutes = [
-            'getAll'   => ['GET',    '',        'index'],
+            'getAll' => ['GET',    '',        'index'],
             'getPaged' => ['GET',    '/paged',  'paged'],
-            'getById'  => ['GET',    '/{id}',   'show'],
-            'create'   => ['POST',   '',        'store'],
-            'update'   => ['PUT',    '/{id}',   'update'],
-            'delete'   => ['DELETE', '/{id}',   'destroy'],
+            'getById' => ['GET',    '/{id}',   'show'],
+            'create' => ['POST',   '',        'store'],
+            'update' => ['PUT',    '/{id}',   'update'],
+            'delete' => ['DELETE', '/{id}',   'destroy'],
         ];
 
         $reflection = new ReflectionClass($this->class);
 
         foreach ($crudRoutes as $methodName => [$httpMethod, $path, $action]) {
             if (method_exists($this->class, $methodName)) {
-                $method     = $reflection->getMethod($methodName);
+                $method = $reflection->getMethod($methodName);
                 $middleware = $this->buildEffectiveMiddleware($method);
                 $this->registerRoute($httpMethod, $path, $methodName, "app.api.{$this->getEntityName()}.{$action}", $middleware);
             }
@@ -46,7 +46,7 @@ class RouteRegistrar
     public function registerCustomRoutes(): void
     {
         $reflection = new ReflectionClass($this->class);
-        
+
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             if ($this->isStandardCrudMethod($method->getName())) {
                 continue;
@@ -65,14 +65,14 @@ class RouteRegistrar
     private function isStandardCrudMethod(string $methodName): bool
     {
         return in_array($methodName, [
-            'getAll', 'getById', 'create', 'update', 'delete', 'getPaged'
+            'getAll', 'getById', 'create', 'update', 'delete', 'getPaged',
         ]);
     }
 
     private function registerAttributedRoute(ReflectionMethod $method): bool
     {
         $attributes = $method->getAttributes(RouteAttribute::class);
-        
+
         if (empty($attributes)) {
             return false;
         }
@@ -81,7 +81,7 @@ class RouteRegistrar
             $route = $attribute->newInstance();
             $this->makeAppServiceRoute(
                 $route->methods,
-                $this->baseUri . '/' . $route->uri,
+                $this->baseUri.'/'.$route->uri,
                 $method->getName(),
                 (array) $route->middleware
             )->name($route->name);
@@ -95,23 +95,23 @@ class RouteRegistrar
         $httpMethodPrefixes = [
             'get' => 'GET', 'post' => 'POST', 'put' => 'PUT',
             'patch' => 'PATCH', 'delete' => 'DELETE',
-            'options' => 'OPTIONS', 'head' => 'HEAD'
+            'options' => 'OPTIONS', 'head' => 'HEAD',
         ];
 
         $methodName = $method->getName();
-        
+
         foreach ($httpMethodPrefixes as $prefix => $httpMethod) {
-            if (!str_starts_with(strtolower($methodName), $prefix)) {
+            if (! str_starts_with(strtolower($methodName), $prefix)) {
                 continue;
             }
 
             $baseMethodName = substr($methodName, strlen($prefix));
-            $uri            = $this->buildUriWithParameters($method, $baseMethodName, $httpMethod);
-            $middleware     = $this->buildEffectiveMiddleware($method);
+            $uri = $this->buildUriWithParameters($method, $baseMethodName, $httpMethod);
+            $middleware = $this->buildEffectiveMiddleware($method);
 
             $this->makeAppServiceRoute(
                 [$httpMethod],
-                $this->baseUri . '/' . $uri,
+                $this->baseUri.'/'.$uri,
                 $methodName,
                 $middleware
             )->name("api.{$this->getEntityName()}.{$uri}");
@@ -122,22 +122,28 @@ class RouteRegistrar
     private function buildUriWithParameters(ReflectionMethod $method, string $baseMethodName, string $httpMethod): string
     {
         $uri = strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $baseMethodName));
-        
+
         foreach ($method->getParameters() as $param) {
             if ($this->shouldBeUriParameter($param, $baseMethodName, $httpMethod)) {
                 $uri .= "/{{$param->getName()}}";
             }
         }
-        
+
         return $uri;
     }
 
     private function shouldBeUriParameter($param, string $baseMethodName, string $httpMethod): bool
     {
         // Check attributes first
-        if (!empty($param->getAttributes(FromUri::class))) return true;
-        if (!empty($param->getAttributes(FromQuery::class))) return false;
-        if (!empty($param->getAttributes(FromBody::class))) return false;
+        if (! empty($param->getAttributes(FromUri::class))) {
+            return true;
+        }
+        if (! empty($param->getAttributes(FromQuery::class))) {
+            return false;
+        }
+        if (! empty($param->getAttributes(FromBody::class))) {
+            return false;
+        }
 
         // Convention-based fallback
         return str_contains($baseMethodName, $param->getName());
@@ -159,12 +165,12 @@ class RouteRegistrar
 
         // Determine which permission applies: method-level wins over class-level.
         $methodAttrs = $method->getAttributes(RequiresPermission::class);
-        if (!empty($methodAttrs)) {
+        if (! empty($methodAttrs)) {
             /** @var RequiresPermission $perm */
             $perm = $methodAttrs[0]->newInstance();
         } else {
             $classAttrs = (new ReflectionClass($this->class))->getAttributes(RequiresPermission::class);
-            $perm       = !empty($classAttrs) ? $classAttrs[0]->newInstance() : null;
+            $perm = ! empty($classAttrs) ? $classAttrs[0]->newInstance() : null;
         }
 
         if ($perm !== null) {
@@ -184,9 +190,10 @@ class RouteRegistrar
 
         while ($current !== false) {
             $attrs = $current->getAttributes(AppServiceMiddleware::class);
-            if (!empty($attrs)) {
+            if (! empty($attrs)) {
                 /** @var AppServiceMiddleware $attr */
                 $attr = $attrs[0]->newInstance();
+
                 return $attr->middleware;
             }
             $current = $current->getParentClass();
@@ -205,6 +212,7 @@ class RouteRegistrar
     {
         $base = class_basename($this->class);
         $base = preg_replace('/(?:AppService|Controller|Service)$/', '', $base);
+
         return strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $base));
     }
 
@@ -215,7 +223,7 @@ class RouteRegistrar
         ?string $name = null,
         array $middleware = ['api']
     ): void {
-        $uri = ltrim($this->baseUri . $path, '/');
+        $uri = ltrim($this->baseUri.$path, '/');
         $routes = Route::getRoutes();
 
         // Check for existing route with same method and URI
@@ -229,7 +237,7 @@ class RouteRegistrar
             }
         }
 
-        $this->makeAppServiceRoute([$method], $this->baseUri . $path, $action, $middleware)
+        $this->makeAppServiceRoute([$method], $this->baseUri.$path, $action, $middleware)
             ->name($name ?? "api.{$action}");
     }
 

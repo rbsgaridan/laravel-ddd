@@ -23,7 +23,7 @@ use Attribute;
 class ApiSecurity
 {
     /**
-     * @param string[] $schemes  Names matching keys in config('api-docs.security_schemes')
+     * @param  string[]  $schemes  Names matching keys in config('api-docs.security_schemes')
      */
     public function __construct(
         public array $schemes = ['sanctum']

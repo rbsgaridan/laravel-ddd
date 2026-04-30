@@ -22,6 +22,10 @@ Reusable Laravel DDD / Clean Architecture building blocks packaged for Composer.
 
 The package is installable as a standalone Composer library and registers itself through Laravel package auto-discovery.
 
+## Developer Manual
+
+For a fuller consumer guide, see [docs/DEVELOPER-MANUAL.md](/C:/laravel-projects/packages/incoder-ddd/docs/DEVELOPER-MANUAL.md).
+
 ## Package Name
 
 Current `composer.json` package name:
@@ -58,14 +62,17 @@ php artisan vendor:publish --tag=incoder-ddd-config
 
 This publishes:
 
+- `config/incoder-ddd.php`
 - `config/api-docs.php`
 - `config/reporting.php`
 
 ## What The Package Actually Assumes
 
-Some features are generic. Some are opinionated and expect the consuming app to follow existing conventions already encoded in this package.
+Some features are generic. Some are opinionated and default to conventions already encoded in this package.
 
-Current conventions used by runtime scanning and code generation:
+Those defaults now live in `config/incoder-ddd.php`.
+
+Default conventions:
 
 - AppService discovery expects classes under `Core\Application\...`
 - DI auto-binding expects `Core\Domain\...` and `Core\Infrastructure\Eloquent\Repositories\...`
@@ -73,7 +80,7 @@ Current conventions used by runtime scanning and code generation:
 - scaffold commands generate files into `core/...`
 - AppService HTTP routes are registered under `/app/api/{service}`
 
-If your application does not follow those conventions, the generic base classes are still reusable, but the auto-discovery and generators may need adaptation.
+If your application does not follow those conventions, you can override the package defaults in `config/incoder-ddd.php`. The generic base classes remain reusable even when you disable or replace convention-based scanning.
 
 ## Core Building Blocks
 
@@ -197,7 +204,7 @@ php artisan proxy:generate
 php artisan proxy:generate --output=resources/js/proxies
 ```
 
-Note: the current command signature defaults to `resources/js/proxiees`. Pass `--output` if you want a different path.
+Default output path is `resources/js/proxies`. You can also override it in `config/incoder-ddd.php`.
 
 ### Flutter
 

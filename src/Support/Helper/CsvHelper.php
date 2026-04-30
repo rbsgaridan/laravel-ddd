@@ -7,15 +7,14 @@ class CsvHelper
     /**
      * Read a CSV file and return an array of rows.
      *
-     * @param string $filePath  Path to the CSV file
-     * @param bool $hasHeader   Whether the CSV has a header row
-     * @return array
+     * @param  string  $filePath  Path to the CSV file
+     * @param  bool  $hasHeader  Whether the CSV has a header row
      */
     public static function read(string $filePath, bool $hasHeader = true): array
     {
         $rows = [];
 
-        if (!file_exists($filePath) || !is_readable($filePath)) {
+        if (! file_exists($filePath) || ! is_readable($filePath)) {
             throw new \Exception("CSV file not found or not readable: {$filePath}");
         }
 

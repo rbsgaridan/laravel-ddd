@@ -5,6 +5,7 @@ namespace Incoder\DDD\Support\TypeScript;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Incoder\DDD\Application\Services\AppServiceBase;
+use Incoder\DDD\Support\Helper\PackageConfig;
 use Incoder\DDD\Support\OpenApi\OpenApiGenerator;
 use Incoder\DDD\Support\OpenApi\SchemaInferrer;
 use ReflectionClass;
@@ -13,19 +14,18 @@ use Spatie\LaravelData\Data;
 class TypeScriptProxyGenerator
 {
     public function __construct(
-        private readonly Filesystem $files = new Filesystem(),
-        private readonly SchemaInferrer $schemaInferrer = new SchemaInferrer(),
-    ) {
-    }
+        private readonly Filesystem $files = new Filesystem,
+        private readonly SchemaInferrer $schemaInferrer = new SchemaInferrer,
+    ) {}
 
     /**
      * @return array{services:int, dtoSchemas:int, outputPath:string, files:string[]}
      */
     public function generate(string $outputPath): array
     {
-        $classMap = require base_path('vendor/composer/autoload_classmap.php');
+        $classMap = PackageConfig::loadClassMap();
         $appServices = $this->findAppServiceClasses($classMap);
-        $spec = (new OpenApiGenerator())->generate();
+        $spec = (new OpenApiGenerator)->generate();
 
         $operationsByService = $this->collectOperations($spec);
         $dtoSchemas = $this->collectDtoSchemas($classMap, $appServices);
@@ -35,18 +35,18 @@ class TypeScriptProxyGenerator
         }
 
         $root = base_path($outputPath);
-        $servicesDir = $root . DIRECTORY_SEPARATOR . 'services';
+        $servicesDir = $root.DIRECTORY_SEPARATOR.'services';
 
         $this->files->ensureDirectoryExists($servicesDir);
         $this->deleteGeneratedFiles($root, $servicesDir);
 
         $writtenFiles = [];
 
-        $modelsPath = $root . DIRECTORY_SEPARATOR . 'models.ts';
+        $modelsPath = $root.DIRECTORY_SEPARATOR.'models.ts';
         $this->files->put($modelsPath, $this->buildModelsFile($dtoSchemas));
         $writtenFiles[] = $modelsPath;
 
-        $runtimePath = $root . DIRECTORY_SEPARATOR . 'runtime.ts';
+        $runtimePath = $root.DIRECTORY_SEPARATOR.'runtime.ts';
         $this->files->put($runtimePath, $this->buildRuntimeFile());
         $writtenFiles[] = $runtimePath;
 
@@ -55,20 +55,20 @@ class TypeScriptProxyGenerator
         ksort($operationsByService);
 
         foreach ($operationsByService as $serviceName => $serviceMeta) {
-            $servicePath = $servicesDir . DIRECTORY_SEPARATOR . $serviceName . '.ts';
+            $servicePath = $servicesDir.DIRECTORY_SEPARATOR.$serviceName.'.ts';
             $this->files->put($servicePath, $this->buildServiceFile($serviceName, $serviceMeta));
             $writtenFiles[] = $servicePath;
             $serviceExportLines[] = "export * from './{$serviceName}';";
         }
 
-        $servicesIndexPath = $servicesDir . DIRECTORY_SEPARATOR . 'index.ts';
+        $servicesIndexPath = $servicesDir.DIRECTORY_SEPARATOR.'index.ts';
         $this->files->put(
             $servicesIndexPath,
-            $this->generatedHeader('Generated service exports.') . implode("\n", $serviceExportLines) . "\n"
+            $this->generatedHeader('Generated service exports.').implode("\n", $serviceExportLines)."\n"
         );
         $writtenFiles[] = $servicesIndexPath;
 
-        $indexPath = $root . DIRECTORY_SEPARATOR . 'index.ts';
+        $indexPath = $root.DIRECTORY_SEPARATOR.'index.ts';
         $this->files->put($indexPath, $this->buildRootIndexFile());
         $writtenFiles[] = $indexPath;
 
@@ -81,38 +81,38 @@ class TypeScriptProxyGenerator
     }
 
     /**
-     * @param array<class-string, string> $classMap
+     * @param  array<class-string, string>  $classMap
      * @return array<int, class-string>
      */
     private function findAppServiceClasses(array $classMap): array
     {
         return array_values(array_filter(
             array_keys($classMap),
-            fn (string $class) =>
-                str_starts_with($class, 'Core\\Application\\')
+            fn (string $class) => str_starts_with($class, PackageConfig::applicationNamespace().'\\')
                 && str_ends_with($class, 'AppService')
-                && !str_starts_with(class_basename($class), 'I')
+                && ! str_starts_with(class_basename($class), 'I')
                 && class_exists($class)
                 && is_subclass_of($class, AppServiceBase::class)
         ));
     }
 
     /**
-     * @param array<string, mixed> $spec
+     * @param  array<string, mixed>  $spec
      * @return array<string, array{basePath:string, operations:array<int, array<string, mixed>>}>
      */
     private function collectOperations(array $spec): array
     {
         $grouped = [];
+        $routePrefix = rtrim(PackageConfig::appServiceRoutePrefix(), '/').'/';
 
         foreach (($spec['paths'] ?? []) as $path => $methods) {
-            if (!str_starts_with($path, '/app/api/')) {
+            if (! str_starts_with($path, $routePrefix)) {
                 continue;
             }
 
             foreach ($methods as $httpMethod => $operation) {
                 $operationId = (string) ($operation['operationId'] ?? '');
-                if ($operationId === '' || !str_contains($operationId, '_')) {
+                if ($operationId === '' || ! str_contains($operationId, '_')) {
                     continue;
                 }
 
@@ -147,8 +147,8 @@ class TypeScriptProxyGenerator
     }
 
     /**
-     * @param array<class-string, string> $classMap
-     * @param array<int, class-string> $appServices
+     * @param  array<class-string, string>  $classMap
+     * @param  array<int, class-string>  $appServices
      * @return array<string, array<string, mixed>>
      */
     private function collectDtoSchemas(array $classMap, array $appServices): array
@@ -157,14 +157,14 @@ class TypeScriptProxyGenerator
 
         foreach ($appServices as $serviceClass) {
             $serviceReflection = new ReflectionClass($serviceClass);
-            $contractsPrefix = $serviceReflection->getNamespaceName() . '\\Contracts\\';
+            $contractsPrefix = $serviceReflection->getNamespaceName().'\\Contracts\\';
 
             foreach (array_keys($classMap) as $class) {
-                if (!str_starts_with($class, $contractsPrefix)) {
+                if (! str_starts_with($class, $contractsPrefix)) {
                     continue;
                 }
 
-                if (!class_exists($class) || !is_subclass_of($class, Data::class)) {
+                if (! class_exists($class) || ! is_subclass_of($class, Data::class)) {
                     continue;
                 }
 
@@ -193,12 +193,12 @@ class TypeScriptProxyGenerator
             $lines[] = '';
         }
 
-        return rtrim(implode("\n", $lines)) . "\n";
+        return rtrim(implode("\n", $lines))."\n";
     }
 
     private function buildRuntimeFile(): string
     {
-        return $this->generatedHeader('Generated proxy runtime helpers.') . <<<'TS'
+        return $this->generatedHeader('Generated proxy runtime helpers.').<<<'TS'
 export type ProxyQueryValue =
     | string
     | number
@@ -247,7 +247,7 @@ TS;
 
     private function buildRootIndexFile(): string
     {
-        return $this->generatedHeader('Generated proxy entrypoint.') . <<<'TS'
+        return $this->generatedHeader('Generated proxy entrypoint.').<<<'TS'
 export * from './models';
 export * from './runtime';
 export * from './services';
@@ -255,7 +255,7 @@ TS;
     }
 
     /**
-     * @param array{basePath:string, operations:array<int, array<string, mixed>>} $serviceMeta
+     * @param  array{basePath:string, operations:array<int, array<string, mixed>>}  $serviceMeta
      */
     private function buildServiceFile(string $serviceName, array $serviceMeta): string
     {
@@ -276,13 +276,13 @@ TS;
 
         $imports = ["import axios from 'axios';"];
 
-        if (!empty($typeImports)) {
-            $imports[] = "import type { " . implode(', ', $typeImports) . " } from '../models';";
+        if (! empty($typeImports)) {
+            $imports[] = 'import type { '.implode(', ', $typeImports)." } from '../models';";
         }
 
         $imports[] = "import { buildUrl, normalizePayload } from '../runtime';";
 
-        $className = $serviceName . 'Proxy';
+        $className = $serviceName.'Proxy';
         $instanceName = Str::camel($className);
 
         $lines = [
@@ -291,7 +291,7 @@ TS;
             '',
         ];
 
-        if (!empty($helperTypeBlocks)) {
+        if (! empty($helperTypeBlocks)) {
             $lines[] = implode("\n\n", $helperTypeBlocks);
             $lines[] = '';
         }
@@ -311,11 +311,11 @@ TS;
         $lines[] = '';
         $lines[] = "export const {$instanceName} = new {$className}();";
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
     }
 
     /**
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $operation
      * @return array{typeImports:array<int, string>, helperTypeBlocks:array<int, string>, method:string}
      */
     private function prepareOperation(string $serviceName, string $basePath, array $operation): array
@@ -323,7 +323,7 @@ TS;
         $httpMethod = strtoupper((string) $operation['httpMethod']);
         $methodName = (string) $operation['name'];
         $responseType = $this->resolveResponseType($operation['responses'] ?? []);
-        if ($methodName === 'getAll' && $responseType !== 'unknown' && $responseType !== 'void' && !str_starts_with($responseType, 'Array<')) {
+        if ($methodName === 'getAll' && $responseType !== 'unknown' && $responseType !== 'void' && ! str_starts_with($responseType, 'Array<')) {
             $responseType = "Array<{$responseType}>";
         }
         $requestBodySchema = $this->extractSchemaFromRequestBody($operation['requestBody']);
@@ -350,7 +350,7 @@ TS;
         $paramsTypeName = null;
 
         if ($usesParamsObject) {
-            $paramsTypeName = $serviceName . Str::studly($methodName) . 'Params';
+            $paramsTypeName = $serviceName.Str::studly($methodName).'Params';
             $helperTypes[] = $this->renderParamsType($paramsTypeName, array_merge($pathParams, $queryParams));
         }
 
@@ -362,27 +362,27 @@ TS;
         if ($usesParamsObject && $paramsTypeName !== null) {
             $signatureArgs[] = "params: {$paramsTypeName}";
             $pathParamsVariable = 'params';
-            $queryParamsVariable = !empty($queryParams) ? $this->renderQueryObject('params', $queryParams) : null;
+            $queryParamsVariable = ! empty($queryParams) ? $this->renderQueryObject('params', $queryParams) : null;
         } elseif (count($pathParams) === 1) {
             $pathParam = $pathParams[0];
             $pathParamType = $this->schemaToTsType($pathParam['schema'] ?? ['type' => 'string']);
-            $signatureArgs[] = $pathParam['name'] . ': ' . $pathParamType;
-            $pathParamsVariable = '{ ' . $pathParam['name'] . ' }';
-        } elseif (!empty($queryParams)) {
-            $paramsTypeName = $serviceName . Str::studly($methodName) . 'QueryParams';
+            $signatureArgs[] = $pathParam['name'].': '.$pathParamType;
+            $pathParamsVariable = '{ '.$pathParam['name'].' }';
+        } elseif (! empty($queryParams)) {
+            $paramsTypeName = $serviceName.Str::studly($methodName).'QueryParams';
             $helperTypes[] = $this->renderParamsType($paramsTypeName, $queryParams);
             $signatureArgs[] = "params: {$paramsTypeName}";
             $queryParamsVariable = 'params';
         }
 
-        if (!empty($pathParams)) {
+        if (! empty($pathParams)) {
             $urlExpression = "buildUrl('{$operation['path']}', {$pathParamsVariable})";
         } elseif ($operation['path'] !== $basePath) {
-            $urlExpression = "'" . $operation['path'] . "'";
+            $urlExpression = "'".$operation['path']."'";
         }
 
         if ($bodyType !== null) {
-            $signatureArgs[] = 'data: ' . $bodyType;
+            $signatureArgs[] = 'data: '.$bodyType;
         }
 
         $responseTypeImport = $this->extractNamedTypes($this->extractResponseSchema($operation['responses'] ?? []));
@@ -390,7 +390,7 @@ TS;
         $typeImports = array_values(array_unique($typeImports));
 
         $signature = implode(', ', $signatureArgs);
-        $returnType = $responseType === 'void' ? 'Promise<void>' : 'Promise<' . $responseType . '>';
+        $returnType = $responseType === 'void' ? 'Promise<void>' : 'Promise<'.$responseType.'>';
 
         $methodLines = [];
         $methodLines[] = '/**';
@@ -404,11 +404,11 @@ TS;
 
         if ($responseType === 'void') {
             $axiosCall = $this->buildAxiosCall($httpMethod, $requestUrlExpression, $configExpression, $bodyType !== null ? 'data' : null, false);
-            $methodLines[] = '    await ' . $axiosCall . ';';
+            $methodLines[] = '    await '.$axiosCall.';';
             $methodLines[] = '}';
         } else {
             $axiosCall = $this->buildAxiosCall($httpMethod, $requestUrlExpression, $configExpression, $bodyType !== null ? 'data' : null, true, $responseType);
-            $methodLines[] = '    const response = await ' . $axiosCall . ';';
+            $methodLines[] = '    const response = await '.$axiosCall.';';
             $methodLines[] = "    return normalizePayload<{$responseType}>(response.data);";
             $methodLines[] = '}';
         }
@@ -421,22 +421,22 @@ TS;
     }
 
     /**
-     * @param array<string, mixed>|null $requestBody
+     * @param  array<string, mixed>|null  $requestBody
      * @return array<string, mixed>|null
      */
     private function extractSchemaFromRequestBody(mixed $requestBody): ?array
     {
-        if (!is_array($requestBody)) {
+        if (! is_array($requestBody)) {
             return null;
         }
 
         $content = $requestBody['content'] ?? null;
-        if (!is_array($content) || empty($content)) {
+        if (! is_array($content) || empty($content)) {
             return null;
         }
 
         $firstMediaType = reset($content);
-        if (!is_array($firstMediaType)) {
+        if (! is_array($firstMediaType)) {
             return null;
         }
 
@@ -444,7 +444,7 @@ TS;
     }
 
     /**
-     * @param array<string, mixed> $responses
+     * @param  array<string, mixed>  $responses
      */
     private function resolveResponseType(array $responses): string
     {
@@ -464,7 +464,7 @@ TS;
     }
 
     /**
-     * @param array<string, mixed> $responses
+     * @param  array<string, mixed>  $responses
      * @return array<string, mixed>|null
      */
     private function extractResponseSchema(array $responses): ?array
@@ -494,17 +494,17 @@ TS;
      */
     private function extractSchemaFromResponse(mixed $response): ?array
     {
-        if (!is_array($response)) {
+        if (! is_array($response)) {
             return null;
         }
 
         $content = $response['content'] ?? null;
-        if (!is_array($content) || empty($content)) {
+        if (! is_array($content) || empty($content)) {
             return null;
         }
 
         $firstMediaType = reset($content);
-        if (!is_array($firstMediaType)) {
+        if (! is_array($firstMediaType)) {
             return null;
         }
 
@@ -512,7 +512,7 @@ TS;
     }
 
     /**
-     * @param array<string, mixed> $schema
+     * @param  array<string, mixed>  $schema
      * @return array<int, string>
      */
     private function extractNamedTypes(?array $schema): array
@@ -537,7 +537,7 @@ TS;
         }
 
         foreach (['allOf', 'oneOf', 'anyOf'] as $listKey) {
-            if (!isset($schema[$listKey]) || !is_array($schema[$listKey])) {
+            if (! isset($schema[$listKey]) || ! is_array($schema[$listKey])) {
                 continue;
             }
 
@@ -560,32 +560,35 @@ TS;
     }
 
     /**
-     * @param array<string, mixed> $schema
+     * @param  array<string, mixed>  $schema
      */
     private function schemaToTsType(array $schema): string
     {
         if (isset($schema['$ref']) && is_string($schema['$ref'])) {
             $name = basename(str_replace('\\', '/', $schema['$ref']));
+
             return $name === 'UploadedFile' ? 'File' : $name;
         }
 
-        if (isset($schema['allOf']) && is_array($schema['allOf']) && !empty($schema['allOf'])) {
+        if (isset($schema['allOf']) && is_array($schema['allOf']) && ! empty($schema['allOf'])) {
             $parts = array_map(
                 fn (array $item): string => $this->schemaToTsType($item),
                 array_values(array_filter($schema['allOf'], 'is_array'))
             );
 
             $type = implode(' & ', array_filter($parts));
+
             return $this->applyNullable($type !== '' ? $type : 'unknown', $schema);
         }
 
         foreach (['oneOf', 'anyOf'] as $unionKey) {
-            if (isset($schema[$unionKey]) && is_array($schema[$unionKey]) && !empty($schema[$unionKey])) {
+            if (isset($schema[$unionKey]) && is_array($schema[$unionKey]) && ! empty($schema[$unionKey])) {
                 $parts = array_map(
                     fn (array $item): string => $this->schemaToTsType($item),
                     array_values(array_filter($schema[$unionKey], 'is_array'))
                 );
                 $type = implode(' | ', array_filter($parts));
+
                 return $this->applyNullable($type !== '' ? $type : 'unknown', $schema);
             }
         }
@@ -593,7 +596,7 @@ TS;
         if (isset($schema['enum']) && is_array($schema['enum']) && $schema['enum'] !== []) {
             $values = array_map(
                 static fn ($value): string => is_string($value)
-                    ? "'" . str_replace("'", "\\'", trim($value, '"')) . "'"
+                    ? "'".str_replace("'", "\\'", trim($value, '"'))."'"
                     : (is_bool($value) ? ($value ? 'true' : 'false') : (string) $value),
                 $schema['enum']
             );
@@ -614,25 +617,26 @@ TS;
         if ($type === 'object' || isset($schema['properties']) || isset($schema['additionalProperties'])) {
             if (isset($schema['properties']) && is_array($schema['properties'])) {
                 $required = array_values(array_filter($schema['required'] ?? [], 'is_string'));
-                $lines = ["{"];
+                $lines = ['{'];
 
                 foreach ($schema['properties'] as $propertyName => $propertySchema) {
                     $propertyType = is_array($propertySchema) ? $this->schemaToTsType($propertySchema) : 'unknown';
                     $optionalMarker = in_array((string) $propertyName, $required, true) ? '' : '?';
                     $safeName = preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', (string) $propertyName)
                         ? $propertyName
-                        : "'" . str_replace("'", "\\'", (string) $propertyName) . "'";
+                        : "'".str_replace("'", "\\'", (string) $propertyName)."'";
 
                     $lines[] = "  {$safeName}{$optionalMarker}: {$propertyType};";
                 }
 
-                $lines[] = "}";
+                $lines[] = '}';
 
                 return $this->applyNullable(implode("\n", $lines), $schema);
             }
 
             if (isset($schema['additionalProperties']) && is_array($schema['additionalProperties'])) {
                 $valueType = $this->schemaToTsType($schema['additionalProperties']);
+
                 return $this->applyNullable("Record<string, {$valueType}>", $schema);
             }
 
@@ -650,11 +654,11 @@ TS;
     }
 
     /**
-     * @param array<string, mixed> $schema
+     * @param  array<string, mixed>  $schema
      */
     private function applyNullable(string $type, array $schema): string
     {
-        if (($schema['nullable'] ?? false) === true && !str_contains($type, 'null')) {
+        if (($schema['nullable'] ?? false) === true && ! str_contains($type, 'null')) {
             return "{$type} | null";
         }
 
@@ -662,7 +666,7 @@ TS;
     }
 
     /**
-     * @param array<string, mixed> $schema
+     * @param  array<string, mixed>  $schema
      */
     private function renderNamedSchema(string $schemaName, array $schema): string
     {
@@ -678,7 +682,7 @@ TS;
     }
 
     /**
-     * @param array<int, array<string, mixed>> $parameters
+     * @param  array<int, array<string, mixed>>  $parameters
      */
     private function renderParamsType(string $typeName, array $parameters): string
     {
@@ -690,7 +694,7 @@ TS;
             $optional = ($parameter['required'] ?? false) ? '' : '?';
             $safeName = preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)
                 ? $name
-                : "'" . str_replace("'", "\\'", $name) . "'";
+                : "'".str_replace("'", "\\'", $name)."'";
 
             $lines[] = "    {$safeName}{$optional}: {$type};";
         }
@@ -701,20 +705,20 @@ TS;
     }
 
     /**
-     * @param array<int, array<string, mixed>> $queryParams
+     * @param  array<int, array<string, mixed>>  $queryParams
      */
     private function renderQueryObject(string $sourceVar, array $queryParams): string
     {
         $entries = array_map(
-            fn (array $parameter): string => (string) $parameter['name'] . ': ' . $sourceVar . '.' . (string) $parameter['name'],
+            fn (array $parameter): string => (string) $parameter['name'].': '.$sourceVar.'.'.(string) $parameter['name'],
             $queryParams
         );
 
-        return '{ ' . implode(', ', $entries) . ' }';
+        return '{ '.implode(', ', $entries).' }';
     }
 
     /**
-     * @param array<string, array<string, mixed>> $schemas
+     * @param  array<string, array<string, mixed>>  $schemas
      * @return array<int, string>
      */
     private function findMissingSchemaReferences(array $schemas): array
@@ -724,7 +728,7 @@ TS;
 
         foreach ($schemas as $schema) {
             foreach ($this->extractNamedTypes($schema) as $typeName) {
-                if (!isset($known[$typeName]) && $typeName !== 'File') {
+                if (! isset($known[$typeName]) && $typeName !== 'File') {
                     $missing[$typeName] = true;
                 }
             }
@@ -747,19 +751,19 @@ TS;
         $generic = $typed && $responseType !== null ? "<{$responseType}>" : '';
 
         return match ($httpMethod) {
-            'GET' => 'axios.get' . $generic . '(' . $urlExpression . ($configExpression ? ', ' . $configExpression : '') . ')',
-            'DELETE' => 'axios.delete' . $generic . '(' . $urlExpression . ($configExpression ? ', ' . $configExpression : '') . ')',
-            default => 'axios.' . strtolower($httpMethod) . $generic . '(' . $urlExpression . ', ' . ($bodyVariable ?? 'undefined') . ($configExpression ? ', ' . $configExpression : '') . ')',
+            'GET' => 'axios.get'.$generic.'('.$urlExpression.($configExpression ? ', '.$configExpression : '').')',
+            'DELETE' => 'axios.delete'.$generic.'('.$urlExpression.($configExpression ? ', '.$configExpression : '').')',
+            default => 'axios.'.strtolower($httpMethod).$generic.'('.$urlExpression.', '.($bodyVariable ?? 'undefined').($configExpression ? ', '.$configExpression : '').')',
         };
     }
 
     private function extractServiceBasePath(string $path): string
     {
-        $trimmed = ltrim($path, '/');
-        $segments = explode('/', $trimmed);
-        $serviceSegment = $segments[2] ?? '';
+        $prefix = rtrim(PackageConfig::appServiceRoutePrefix(), '/');
+        $suffix = trim(substr($path, strlen($prefix)), '/');
+        $serviceSegment = explode('/', $suffix)[0] ?? '';
 
-        return '/app/api/' . $serviceSegment;
+        return $prefix.'/'.$serviceSegment;
     }
 
     private function generatedHeader(string $description): string
@@ -779,13 +783,14 @@ TS;
     private function indent(string $content, int $spaces): string
     {
         $indent = str_repeat(' ', $spaces);
+
         return preg_replace('/^/m', $indent, $content) ?? $content;
     }
 
     private function deleteGeneratedFiles(string $root, string $servicesDir): void
     {
         foreach (['models.ts', 'runtime.ts', 'index.ts'] as $fileName) {
-            $path = $root . DIRECTORY_SEPARATOR . $fileName;
+            $path = $root.DIRECTORY_SEPARATOR.$fileName;
             if ($this->files->exists($path)) {
                 $this->files->delete($path);
             }

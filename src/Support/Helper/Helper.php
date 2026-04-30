@@ -2,6 +2,4 @@
 
 namespace IncoderDDD\Support\Helper;
 
-class Helper {
-    
-}
+class Helper {}

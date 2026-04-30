@@ -2,20 +2,18 @@
 
 namespace Incoder\DDD\Domain\Entities;
 
-use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Incoder\DDD\Support\Attributes\FillableAttribute;
-use Illuminate\Database\Eloquent\Builder;
-use ReflectionClass;
 use Ramsey\Uuid\Uuid;
+use ReflectionClass;
 use ReflectionProperty;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Models\Activity;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Class Entity
@@ -29,14 +27,17 @@ use ReflectionProperty;
  * - Enables timestamps.
  * - Detects public properties as `$fillable` (excluding accessors).
  *
- * @package Incoder\DDD\Domain
  *
  * @property string $id UUID primary key
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 abstract class Entity extends Model
 {
     use LogsActivity;
     use SoftDeletes;
+
     /**
      * Indicates if the IDs are auto-incrementing.
      *
@@ -60,10 +61,8 @@ abstract class Entity extends Model
 
     /**
      * Summary of currentUser
-     * @var 
      */
     protected $currentUser;
-
 
     /**
      * Fillable attributes dynamically determined from public properties.
@@ -78,8 +77,6 @@ abstract class Entity extends Model
      * Entity constructor.
      *
      * Automatically populates $fillable with all public non-accessor properties.
-     *
-     * @param array $attributes
      */
     public function __construct(array $attributes = [])
     {
@@ -87,7 +84,7 @@ abstract class Entity extends Model
 
         // Set default values for fillable properties that have defaults
         foreach ($this->fillable as $property) {
-            if ($this->isPublicProperty($property) && !array_key_exists($property, $attributes)) {
+            if ($this->isPublicProperty($property) && ! array_key_exists($property, $attributes)) {
                 $reflectionProperty = $this->reflection()->getProperty($property);
                 if ($reflectionProperty->hasDefaultValue()) {
                     $attributes[$property] = $reflectionProperty->getDefaultValue();
@@ -107,8 +104,6 @@ abstract class Entity extends Model
 
     /**
      * Boot the model and assign a UUID when creating if not set.
-     *
-     * @return void
      */
     protected static function booted(): void
     {
@@ -148,8 +143,6 @@ abstract class Entity extends Model
 
     /**
      * Detect all protected properties (excluding accessors) to set as fillable fields from the model.
-     *
-     * @return array
      */
     protected function detectFillableProperties(): array
     {
@@ -165,7 +158,7 @@ abstract class Entity extends Model
                     $name = $property->getName();
 
                     // Skip accessor-style computed properties
-                    if (method_exists($this, 'get' . Str::studly($name) . 'Attribute')) {
+                    if (method_exists($this, 'get'.Str::studly($name).'Attribute')) {
                         continue;
                     }
 
@@ -179,8 +172,6 @@ abstract class Entity extends Model
 
     /**
      * Get the data type of the primary key.
-     *
-     * @return string
      */
     public function getKeyType(): string
     {
@@ -194,9 +185,6 @@ abstract class Entity extends Model
 
     /**
      * Check if the class has the given property.
-     *
-     * @param string $property
-     * @return bool
      */
     public function checkHasProperty(string $property): bool
     {
@@ -205,9 +193,6 @@ abstract class Entity extends Model
 
     /**
      * Check if a property is private.
-     *
-     * @param string $property
-     * @return bool
      */
     public function isPrivateProperty(string $property): bool
     {
@@ -217,9 +202,6 @@ abstract class Entity extends Model
 
     /**
      * Check if a property is protected.
-     *
-     * @param string $property
-     * @return bool
      */
     public function isProtectedProperty(string $property): bool
     {
@@ -229,9 +211,6 @@ abstract class Entity extends Model
 
     /**
      * Check if a property is public.
-     *
-     * @param string $property
-     * @return bool
      */
     public function isPublicProperty(string $property): bool
     {
@@ -290,7 +269,7 @@ abstract class Entity extends Model
 
         // Include fillable properties that are not in the database
         foreach ($this->fillable as $property) {
-            if (!array_key_exists($property, $array) && $this->isPublicProperty($property)) {
+            if (! array_key_exists($property, $array) && $this->isPublicProperty($property)) {
                 $array[$property] = $this->$property;
             }
         }
@@ -307,7 +286,7 @@ abstract class Entity extends Model
             ->dontSubmitEmptyLogs();
     }
 
-    public function tapActivity(\Spatie\Activitylog\Models\Activity $activity, string $eventName)
+    public function tapActivity(Activity $activity, string $eventName)
     {
         $user = $this->currentUser ?? auth('sanctum')->user() ?? auth()->user();
 
@@ -323,6 +302,7 @@ abstract class Entity extends Model
     public function setCurrentUser($user): self
     {
         $this->currentUser = $user;
+
         return $this;
     }
 
@@ -343,6 +323,7 @@ abstract class Entity extends Model
                 $this->$key = $value;
             }
         }
+
         return $this;
     }
 

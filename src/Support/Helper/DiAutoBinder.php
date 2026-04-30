@@ -1,35 +1,36 @@
 <?php
+
 namespace Incoder\DDD\Support\Helper;
 
 use Illuminate\Support\Facades\App;
 use ReflectionClass;
-
 
 /**
  * Class DiAutoBinder
  *
  * A helper class to automatically bind interfaces to their implementations
  * based on naming conventions and namespaces.
- * 
+ *
  * Usage Example:
  * DiAutoBinder::bindByNamespace('Core\\Domain\\', 'I', 'Repository', 'Core\\Infrastructure');\
- * 
+ *
  * This class can be used in service providers or test setups to streamline
  * the registration of dependencies in the Laravel service container.
- * 
+ *
  * Note: This implementation assumes that the class map is available via Composer's
  * autoload_classmap.php for more reliable discovery of classes and interfaces.
- * 
+ *
  * Incoder\DDD\Support\Helper
- * 
  */
 class DiAutoBinder
 {
     private $_classMap;
+
     public function __construct(array $classMap)
     {
         $this->_classMap = $classMap;
     }
+
     /**
      * This function automatically binds interfaces to their concrete implementations in the Laravel container, based on namespace and naming conventions, ensuring only direct and concrete relationships are registered.
      */
@@ -43,7 +44,7 @@ class DiAutoBinder
 
         $implementationClasses = array_filter(
             $this->_classMap,
-            fn($class) => str_starts_with($class, $implementationNamespace),
+            fn ($class) => str_starts_with($class, $implementationNamespace),
             ARRAY_FILTER_USE_KEY
         );
 

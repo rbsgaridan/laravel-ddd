@@ -2,22 +2,19 @@
 
 namespace Incoder\DDD\Domain\Entities;
 
-use Illuminate\Contracts\Auth\Access\Authorizable;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Hash;
-use Incoder\DDD\Domain\Entities\AggregateRoot;
 
 /**
  * Class AuthenticableAggregateRoot
  *
  * @template T of string
+ *
  * @extends AggregateRoot<T>
- * 
+ *
  * This class serves as a base for aggregate roots that require authentication.
  * Base aggregate root for domain entities that are authenticatable.
  * Inherits from AggregateRoot and implements Laravel's Authenticatable interface.
- *
- * @package App\Domain\Entities
  *
  * @property string|null $remember_token
  * @property string $password
@@ -26,24 +23,16 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 {
     /**
      * User's model table name.
-     *
-     * @var string|null
      */
     // protected $table = 'users';
 
-    
-
     /**
      * The remember token for "remember me" functionality.
-     *
-     * @var string|null
      */
     protected ?string $remember_token = null;
 
     /**
      * The user's password.
-     *
-     * @var string|null
      */
     protected ?string $password = null;
 
@@ -56,12 +45,9 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
         'password',
         'remember_token',
     ];
-    
 
     /**
      * Whether to automatically hash passwords when setting them.
-     *
-     * @var bool
      */
     protected bool $autoHashPasswords = true;
 
@@ -77,8 +63,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Boot the authenticatable entity.
-     *
-     * @return void
      */
     protected static function booted(): void
     {
@@ -86,7 +70,7 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
         static::saving(function ($model) {
             if ($model->autoHashPasswords && $model->isDirty('password') && $model->password) {
-                if (!Hash::needsRehash($model->password)) {
+                if (! Hash::needsRehash($model->password)) {
                     return;
                 }
                 $model->password = Hash::make($model->password);
@@ -96,8 +80,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Get the name of the unique identifier for the user.
-     *
-     * @return string
      */
     public function getAuthIdentifierName(): string
     {
@@ -116,8 +98,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Get the name of the password field.
-     *
-     * @return string
      */
     public function getAuthPasswordName(): string
     {
@@ -126,8 +106,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Get the password for the user.
-     *
-     * @return string|null
      */
     public function getAuthPassword(): ?string
     {
@@ -136,8 +114,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Get the "remember me" token value.
-     *
-     * @return string|null
      */
     public function getRememberToken(): ?string
     {
@@ -147,8 +123,7 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
     /**
      * Set the "remember me" token value.
      *
-     * @param string|null $value
-     * @return void
+     * @param  string|null  $value
      */
     public function setRememberToken($value): void
     {
@@ -157,8 +132,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Get the name of the "remember me" token.
-     *
-     * @return string
      */
     public function getRememberTokenName(): string
     {
@@ -167,9 +140,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Verify the given password against the user's password.
-     *
-     * @param string $password
-     * @return bool
      */
     public function verifyPassword(string $password): bool
     {
@@ -178,9 +148,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Set the user's password (will be automatically hashed if auto-hashing is enabled).
-     *
-     * @param string $password
-     * @return void
      */
     public function setPassword(string $password): void
     {
@@ -189,9 +156,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Set the user's password without auto-hashing (for already hashed passwords).
-     *
-     * @param string $hashedPassword
-     * @return void
      */
     public function setHashedPassword(string $hashedPassword): void
     {
@@ -203,9 +167,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Enable or disable automatic password hashing.
-     *
-     * @param bool $enabled
-     * @return void
      */
     public function setAutoHashPasswords(bool $enabled): void
     {
@@ -214,8 +175,6 @@ abstract class AuthenticableAggregateRoot extends AggregateRoot implements Authe
 
     /**
      * Check if auto password hashing is enabled.
-     *
-     * @return bool
      */
     public function isAutoHashPasswordsEnabled(): bool
     {

@@ -8,14 +8,14 @@ use Attribute;
 class RouteAttribute
 {
     protected const ALLOWED_METHODS = [
-        'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'
+        'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD',
     ];
 
     /**
-     * @param array|string $methods HTTP methods (e.g. 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD')
-     * @param string       $uri      URI path (e.g. "/users")
-     * @param string|null  $name     Optional route name
-     * @param array|string $middleware Middleware groups or middlewares
+     * @param  array|string  $methods  HTTP methods (e.g. 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD')
+     * @param  string  $uri  URI path (e.g. "/users")
+     * @param  string|null  $name  Optional route name
+     * @param  array|string  $middleware  Middleware groups or middlewares
      */
     public function __construct(
         public array|string $methods = ['GET'],
@@ -27,7 +27,7 @@ class RouteAttribute
         $this->methods = array_map('strtoupper', (array) $this->methods);
 
         foreach ($this->methods as $method) {
-            if (!in_array($method, self::ALLOWED_METHODS, true)) {
+            if (! in_array($method, self::ALLOWED_METHODS, true)) {
                 throw new \InvalidArgumentException("Invalid HTTP method: {$method}");
             }
         }
@@ -56,13 +56,15 @@ class RouteAttribute
             return $isApiUri ? ['api'] : ['web'];
         }
 
-        if ($isApiUri && !$hasApi && !$hasWeb) {
+        if ($isApiUri && ! $hasApi && ! $hasWeb) {
             array_unshift($middleware, 'api');
+
             return array_values(array_unique($middleware));
         }
 
-        if (!$isApiUri && !$hasWeb && !$hasApi) {
+        if (! $isApiUri && ! $hasWeb && ! $hasApi) {
             array_unshift($middleware, 'web');
+
             return array_values(array_unique($middleware));
         }
 

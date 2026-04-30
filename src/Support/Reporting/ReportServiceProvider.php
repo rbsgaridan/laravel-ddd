@@ -14,13 +14,13 @@ class ReportServiceProvider extends ServiceProvider
     {
         // Merge config
         $this->mergeConfigFrom(
-            __DIR__ . '/../../../config/reporting.php',
+            __DIR__.'/../../../config/reporting.php',
             'reporting'
         );
 
         // Register the report service
         $this->app->singleton(IReportService::class, function ($app) {
-            return new SsrsReportService();
+            return new SsrsReportService;
         });
 
         // Register alias
@@ -34,7 +34,7 @@ class ReportServiceProvider extends ServiceProvider
     {
         // Publish config
         $this->publishes([
-            __DIR__ . '/../../../config/reporting.php' => config_path('reporting.php'),
+            __DIR__.'/../../../config/reporting.php' => config_path('reporting.php'),
         ], 'incoder-ddd-config');
     }
 }

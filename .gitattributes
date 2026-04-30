@@ -1,0 +1,10 @@
+/vendor export-ignore
+/.github export-ignore
+/tests export-ignore
+/docs export-ignore
+/.gitignore export-ignore
+/AGENTS.md export-ignore
+/phpstan.neon.dist export-ignore
+/phpunit.xml.dist export-ignore
+/pint.json export-ignore
+/package-lock.json export-ignore

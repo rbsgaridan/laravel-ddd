@@ -19,7 +19,7 @@ class ApiResponse
     public function __construct(
         public int $statusCode,
         public string $description,
-        /** @var class-string|null  DTO class to use as the response schema */
+        /** @var class-string|null DTO class to use as the response schema */
         public ?string $class = null
     ) {}
 }

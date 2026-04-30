@@ -1,6 +1,7 @@
 <?php
 
 namespace Incoder\DDD\Support\Attributes;
+
 use Attribute;
 
 /**
@@ -12,5 +13,5 @@ class FillableAttribute
     /**
      * Implement your own logic here
      */
-    public function __construct(){}
+    public function __construct() {}
 }

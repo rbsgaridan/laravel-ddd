@@ -13,7 +13,7 @@ abstract class DomainEvent
 
     public function __construct()
     {
-        $this->occurredOn = new DateTimeImmutable();
+        $this->occurredOn = new DateTimeImmutable;
     }
 
     public function occurredOn(): DateTimeImmutable

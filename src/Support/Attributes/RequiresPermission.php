@@ -43,8 +43,8 @@ class RequiresPermission
     public readonly array $permissions;
 
     /**
-     * @param string ...$permissions  One or more Spatie permission names.
-     *                                Pass no arguments to explicitly mark as "no permission check".
+     * @param  string  ...$permissions  One or more Spatie permission names.
+     *                                  Pass no arguments to explicitly mark as "no permission check".
      */
     public function __construct(string ...$permissions)
     {
@@ -57,7 +57,7 @@ class RequiresPermission
      * Multiple permissions become a single middleware with | separator
      * (Spatie's OR syntax): "permission:users.view|admin.superuser"
      *
-     * @return string[]  Middleware strings to append.
+     * @return string[] Middleware strings to append.
      */
     public function toMiddleware(): array
     {
@@ -65,6 +65,6 @@ class RequiresPermission
             return [];
         }
 
-        return ['permission:' . implode('|', $this->permissions)];
+        return ['permission:'.implode('|', $this->permissions)];
     }
 }

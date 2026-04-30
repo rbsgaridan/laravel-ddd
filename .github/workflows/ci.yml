@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      - name: Validate composer metadata
+        run: composer validate --strict
+
+      - name: Run tests
+        run: composer test
+
+      - name: Check formatting
+        run: composer lint
+
+      - name: Run static analysis
+        run: composer analyse

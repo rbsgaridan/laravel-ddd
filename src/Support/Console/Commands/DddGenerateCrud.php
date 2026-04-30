@@ -3,8 +3,9 @@
 namespace Incoder\DDD\Support\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Str;
+use Incoder\DDD\Support\Helper\PackageConfig;
 
 class DddGenerateCrud extends Command
 {
@@ -18,30 +19,41 @@ class DddGenerateCrud extends Command
 
     public function handle(): int
     {
-        $name        = $this->argument('name');
-        $schema      = $this->option('schema') ?? 'admin';
-        $format      = $this->option('format') ?? 'int';
+        $name = $this->argument('name');
+        $schema = $this->option('schema') ?? 'admin';
+        $format = $this->option('format') ?? 'int';
         $incrementing = $this->option('incrementing') ?? 'true';
 
         $plural = Str::pluralStudly($name);
-        $filesystem = new Filesystem();
+        $filesystem = new Filesystem;
+        $domainPath = PackageConfig::domainPath($plural);
+        $appPath = PackageConfig::applicationPath($plural);
+        $contractsPath = PackageConfig::applicationPath("{$plural}/Contracts");
+        $infraRepoPath = PackageConfig::infrastructureRepositoryPath();
+        $sharedPermissionPath = PackageConfig::sharedPermissionPath();
+        $domainNamespace = PackageConfig::domainNamespace($plural);
+        $applicationNamespace = PackageConfig::applicationNamespace($plural);
+        $contractsNamespace = PackageConfig::applicationNamespace("{$plural}\\Contracts");
+        $infraRepoNamespace = PackageConfig::infrastructureRepositoryNamespace();
+        $sharedPermissionNamespace = PackageConfig::sharedPermissionNamespace();
 
         // Verify the domain model already exists
-        $modelPath = base_path("core/Domain/{$plural}/{$name}.php");
-        if (!$filesystem->exists($modelPath)) {
-            $this->error("Domain model not found: core/Domain/{$plural}/{$name}.php");
+        $modelPath = base_path("{$domainPath}/{$name}.php");
+        if (! $filesystem->exists($modelPath)) {
+            $this->error("Domain model not found: {$domainPath}/{$name}.php");
             $this->line("Run 'php artisan make:domain-model' to create a new model first.");
+
             return 1;
         }
 
         $this->info("Generating CRUD scaffold for existing model: {$name}");
 
         // 1. Repository interface + implementation
-        $domainFolder = base_path("core/Domain/{$plural}");
+        $domainFolder = base_path($domainPath);
         $repositoryInterface = $this->createRepositoryInterface($filesystem, $domainFolder, $name, $plural);
 
-        $infraFolder = base_path("core/Infrastructure/Eloquent/Repositories");
-        $filesystem->ensureDirectoryExists(base_path('core/Infrastructure/Eloquent'));
+        $infraFolder = base_path($infraRepoPath);
+        $filesystem->ensureDirectoryExists(dirname($infraFolder));
         $filesystem->ensureDirectoryExists($infraFolder);
         $this->createRepositoryImplementation($filesystem, $infraFolder, $name, $plural);
 
@@ -49,15 +61,15 @@ class DddGenerateCrud extends Command
         $this->createMigration($filesystem, $name, $plural, $format, $schema);
 
         // 3. DTOs + App Service
-        $appFolder     = "core/Application/{$plural}";
-        $contractFolder = "{$appFolder}/Contracts";
+        $appFolder = $appPath;
+        $contractFolder = $contractsPath;
         $filesystem->ensureDirectoryExists(base_path($appFolder));
         $filesystem->ensureDirectoryExists(base_path($contractFolder));
 
-        $dtoClass         = $this->createDTO($filesystem, $contractFolder, $name, $plural);
-        $dtoListClass     = $this->createListDTO($filesystem, $contractFolder, $name, $plural);
+        $dtoClass = $this->createDTO($filesystem, $contractFolder, $name, $plural);
+        $dtoListClass = $this->createListDTO($filesystem, $contractFolder, $name, $plural);
         $dtoPaginatedClass = $this->createPaginatedDTO($filesystem, $contractFolder, $name, $plural);
-        $interfaceName    = $this->createInterfaceAppService($filesystem, $appFolder, $name, $plural);
+        $interfaceName = $this->createInterfaceAppService($filesystem, $appFolder, $name, $plural);
         $this->createAppServiceClass(
             $filesystem,
             $appFolder,
@@ -82,16 +94,16 @@ class DddGenerateCrud extends Command
         $this->newLine();
         $this->info("CRUD scaffold for {$name} generated successfully.");
         $this->newLine();
-        $this->line("  Next steps:");
-        $this->line("    1. Add properties to DTOs in core/Application/{$plural}/Contracts/");
-        $this->line("    2. Register permissions in database/seeders/RolePermissionSeeder.php");
-        $this->line("       Import: Core\\Shared\\Permission\\{$name}Permissions");
+        $this->line('  Next steps:');
+        $this->line("    1. Add properties to DTOs in {$contractFolder}/");
+        $this->line('    2. Register permissions in database/seeders/RolePermissionSeeder.php');
+        $this->line("       Import: {$sharedPermissionNamespace}\\{$name}Permissions");
         $this->line("       Add {$name}Permissions::all() to the appropriate role group(s)");
-        $this->line("    3. Run: composer dump-autoload");
-        $this->line("    4. Run: php artisan migrate");
-        $this->line("    5. Run: php artisan db:seed --class=RolePermissionSeeder");
-        $this->line("    6. Run: php artisan proxy:generate");
-        $this->line("    7. Customize Vue pages in resources/js/pages/" . Str::camel($plural) . "/");
+        $this->line('    3. Run: composer dump-autoload');
+        $this->line('    4. Run: php artisan migrate');
+        $this->line('    5. Run: php artisan db:seed --class=RolePermissionSeeder');
+        $this->line('    6. Run: php artisan proxy:generate');
+        $this->line('    7. Customize Vue pages in resources/js/pages/'.Str::camel($plural).'/');
 
         return 0;
     }
@@ -102,19 +114,21 @@ class DddGenerateCrud extends Command
 
     private function createPermissionsClass(Filesystem $filesystem, string $name): void
     {
-        $sharedFolder = base_path('core/Shared/Permission');
+        $sharedFolder = base_path(PackageConfig::sharedPermissionPath());
         $filesystem->ensureDirectoryExists($sharedFolder);
 
         $filePath = "{$sharedFolder}/{$name}Permissions.php";
         if ($filesystem->exists($filePath)) {
-            $this->warn("Skipped (exists): core/Shared/Permission/{$name}Permissions.php");
+            $this->warn('Skipped (exists): '.PackageConfig::sharedPermissionPath("{$name}Permissions.php"));
+
             return;
         }
 
         $prefix = $name;
+        $sharedPermissionNamespace = PackageConfig::sharedPermissionNamespace();
         $content = "<?php
 
-namespace Core\\Shared\\Permission;
+namespace {$sharedPermissionNamespace};
 
 class {$name}Permissions
 {
@@ -133,11 +147,11 @@ class {$name}Permissions
             self::EDIT,
             self::DELETE,
         ];
-    }
+        }
 }
 ";
         $filesystem->put($filePath, $content);
-        $this->info("Created: core/Shared/Permission/{$name}Permissions.php");
+        $this->info('Created: '.PackageConfig::sharedPermissionPath("{$name}Permissions.php"));
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -148,13 +162,15 @@ class {$name}Permissions
     {
         $filePath = "{$domainFolder}/I{$name}Repository.php";
         if ($filesystem->exists($filePath)) {
-            $this->warn("Skipped (exists): core/Domain/{$plural}/I{$name}Repository.php");
+            $this->warn('Skipped (exists): '.PackageConfig::domainPath("{$plural}/I{$name}Repository.php"));
+
             return "I{$name}Repository";
         }
 
+        $domainNamespace = PackageConfig::domainNamespace($plural);
         $content = "<?php
 
-namespace Core\\Domain\\{$plural};
+namespace {$domainNamespace};
 
 use Incoder\\DDD\\Domain\\Repositories\\IRepository;
 
@@ -167,7 +183,8 @@ interface I{$name}Repository extends IRepository
 }
 ";
         $filesystem->put($filePath, $content);
-        $this->info("Created: core/Domain/{$plural}/I{$name}Repository.php");
+        $this->info('Created: '.PackageConfig::domainPath("{$plural}/I{$name}Repository.php"));
+
         return "I{$name}Repository";
     }
 
@@ -179,16 +196,19 @@ interface I{$name}Repository extends IRepository
     {
         $filePath = "{$infraFolder}/{$name}Repository.php";
         if ($filesystem->exists($filePath)) {
-            $this->warn("Skipped (exists): core/Infrastructure/Eloquent/Repositories/{$name}Repository.php");
+            $this->warn('Skipped (exists): '.PackageConfig::infrastructureRepositoryPath("{$name}Repository.php"));
+
             return;
         }
 
+        $infraRepoNamespace = PackageConfig::infrastructureRepositoryNamespace();
+        $domainNamespace = PackageConfig::domainNamespace($plural);
         $content = "<?php
 
-namespace Core\\Infrastructure\\Eloquent\\Repositories;
+namespace {$infraRepoNamespace};
 
-use Core\\Domain\\{$plural}\\{$name};
-use Core\\Domain\\{$plural}\\I{$name}Repository;
+use {$domainNamespace}\\{$name};
+use {$domainNamespace}\\I{$name}Repository;
 use Incoder\\DDD\\Infrastructure\\Repositories\\EloquentRepositoryBase;
 
 class {$name}Repository extends EloquentRepositoryBase implements I{$name}Repository
@@ -200,7 +220,7 @@ class {$name}Repository extends EloquentRepositoryBase implements I{$name}Reposi
 }
 ";
         $filesystem->put($filePath, $content);
-        $this->info("Created: core/Infrastructure/Eloquent/Repositories/{$name}Repository.php");
+        $this->info('Created: '.PackageConfig::infrastructureRepositoryPath("{$name}Repository.php"));
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -209,8 +229,8 @@ class {$name}Repository extends EloquentRepositoryBase implements I{$name}Reposi
 
     private function createMigration(Filesystem $filesystem, string $name, string $plural, string $format, string $schema): void
     {
-        $tableName  = Str::snake($plural);
-        $migrationFile = date('Y_m_d_His') . "_create_{$tableName}_table.php";
+        $tableName = Str::snake($plural);
+        $migrationFile = date('Y_m_d_His')."_create_{$tableName}_table.php";
         $migrationFolder = base_path('database/migrations');
         $filesystem->ensureDirectoryExists($migrationFolder);
 
@@ -252,15 +272,16 @@ return new class extends Migration
     private function createDTO(Filesystem $filesystem, string $contractFolder, string $name, string $plural): string
     {
         $className = "{$name}DTO";
-        $filePath  = base_path("{$contractFolder}/{$className}.php");
+        $filePath = base_path("{$contractFolder}/{$className}.php");
         if ($filesystem->exists($filePath)) {
             $this->warn("Skipped (exists): {$contractFolder}/{$className}.php");
+
             return $className;
         }
 
-        $content = "<?php
+        $content = '<?php
 
-namespace Core\\Application\\{$plural}\\Contracts;
+namespace '.PackageConfig::applicationNamespace("{$plural}\\Contracts").";
 
 use Incoder\\DDD\\Application\\DTOs\\DTOBase;
 
@@ -282,21 +303,23 @@ class {$className} extends DTOBase
 ";
         $filesystem->put($filePath, $content);
         $this->info("Created: {$contractFolder}/{$className}.php");
+
         return $className;
     }
 
     private function createListDTO(Filesystem $filesystem, string $contractFolder, string $name, string $plural): string
     {
         $className = "{$name}ListDTO";
-        $filePath  = base_path("{$contractFolder}/{$className}.php");
+        $filePath = base_path("{$contractFolder}/{$className}.php");
         if ($filesystem->exists($filePath)) {
             $this->warn("Skipped (exists): {$contractFolder}/{$className}.php");
+
             return $className;
         }
 
-        $content = "<?php
+        $content = '<?php
 
-namespace Core\\Application\\{$plural}\\Contracts;
+namespace '.PackageConfig::applicationNamespace("{$plural}\\Contracts").";
 
 use Incoder\\DDD\\Application\\DTOs\\DTOBase;
 
@@ -310,21 +333,23 @@ class {$className} extends DTOBase
 ";
         $filesystem->put($filePath, $content);
         $this->info("Created: {$contractFolder}/{$className}.php");
+
         return $className;
     }
 
     private function createPaginatedDTO(Filesystem $filesystem, string $contractFolder, string $name, string $plural): string
     {
         $className = "{$name}PaginatedDTO";
-        $filePath  = base_path("{$contractFolder}/{$className}.php");
+        $filePath = base_path("{$contractFolder}/{$className}.php");
         if ($filesystem->exists($filePath)) {
             $this->warn("Skipped (exists): {$contractFolder}/{$className}.php");
+
             return $className;
         }
 
-        $content = "<?php
+        $content = '<?php
 
-namespace Core\\Application\\{$plural}\\Contracts;
+namespace '.PackageConfig::applicationNamespace("{$plural}\\Contracts").";
 
 use Incoder\\DDD\\Application\\DTOs\\PaginatedDTOBase;
 use Spatie\\LaravelData\\DataCollection;
@@ -341,6 +366,7 @@ class {$className} extends PaginatedDTOBase
 ";
         $filesystem->put($filePath, $content);
         $this->info("Created: {$contractFolder}/{$className}.php");
+
         return $className;
     }
 
@@ -351,15 +377,16 @@ class {$className} extends PaginatedDTOBase
     private function createInterfaceAppService(Filesystem $filesystem, string $appFolder, string $name, string $plural): string
     {
         $interfaceName = "I{$name}AppService";
-        $filePath      = base_path("{$appFolder}/{$interfaceName}.php");
+        $filePath = base_path("{$appFolder}/{$interfaceName}.php");
         if ($filesystem->exists($filePath)) {
             $this->warn("Skipped (exists): {$appFolder}/{$interfaceName}.php");
+
             return $interfaceName;
         }
 
-        $content = "<?php
+        $content = '<?php
 
-namespace Core\\Application\\{$plural};
+namespace '.PackageConfig::applicationNamespace($plural).";
 
 use Incoder\\DDD\\Application\\Contracts\\IAppService;
 
@@ -370,6 +397,7 @@ interface {$interfaceName} extends IAppService
 ";
         $filesystem->put($filePath, $content);
         $this->info("Created: {$appFolder}/{$interfaceName}.php");
+
         return $interfaceName;
     }
 
@@ -385,21 +413,22 @@ interface {$interfaceName} extends IAppService
         string $interfaceName
     ): void {
         $className = "{$name}AppService";
-        $filePath  = base_path("{$appFolder}/{$className}.php");
+        $filePath = base_path("{$appFolder}/{$className}.php");
         if ($filesystem->exists($filePath)) {
             $this->warn("Skipped (exists): {$appFolder}/{$className}.php");
+
             return;
         }
 
-        $content = "<?php
+        $content = '<?php
 
-namespace Core\\Application\\{$plural};
+namespace '.PackageConfig::applicationNamespace($plural).';
 
-use Core\\Application\\{$plural}\\Contracts\\{$dtoClass};
-use Core\\Application\\{$plural}\\Contracts\\{$dtoListClass};
-use Core\\Application\\{$plural}\\Contracts\\{$dtoPaginatedClass};
-use Core\\Domain\\{$plural}\\{$repositoryInterface};
-use Core\\Domain\\{$plural}\\{$name};
+use '.PackageConfig::applicationNamespace("{$plural}\\Contracts")."\\{$dtoClass};
+use ".PackageConfig::applicationNamespace("{$plural}\\Contracts")."\\{$dtoListClass};
+use ".PackageConfig::applicationNamespace("{$plural}\\Contracts")."\\{$dtoPaginatedClass};
+use ".PackageConfig::domainNamespace($plural)."\\{$repositoryInterface};
+use ".PackageConfig::domainNamespace($plural)."\\{$name};
 use Illuminate\\Contracts\\Auth\\Guard;
 use Incoder\\DDD\\Application\\Services\\AppServiceBase;
 use Psr\\Log\\LoggerInterface;
@@ -433,34 +462,36 @@ class {$className} extends AppServiceBase implements {$interfaceName}
 
     private function createController(Filesystem $filesystem, string $name, string $plural): void
     {
-        $controllerFolder = app_path('Http/Controllers/Web');
+        $controllerFolder = base_path(PackageConfig::webControllerPath());
         $filesystem->ensureDirectoryExists($controllerFolder);
 
-        $className   = "{$name}Controller";
-        $filePath    = "{$controllerFolder}/{$className}.php";
+        $className = "{$name}Controller";
+        $filePath = "{$controllerFolder}/{$className}.php";
+        $appNamespace = trim(app()->getNamespace(), '\\');
         if ($filesystem->exists($filePath)) {
-            $this->warn("Skipped (exists): app/Http/Controllers/Web/{$className}.php");
+            $this->warn('Skipped (exists): '.PackageConfig::webControllerPath("{$className}.php"));
+
             return;
         }
 
         $routePrefix = Str::kebab($plural);
-        $routeName   = Str::snake($plural, '-');
-        $vuePage     = Str::camel($plural) . '/Index';
-        $serviceVar  = Str::camel($name) . 'Service';
+        $routeName = Str::snake($plural, '-');
+        $vuePage = Str::camel($plural).'/Index';
+        $serviceVar = Str::camel($name).'Service';
 
         // Permission strings as plain literals (attributes require constant expressions)
-        $permView   = "{$name}.view";
+        $permView = "{$name}.view";
         $permCreate = "{$name}.create";
-        $permEdit   = "{$name}.edit";
+        $permEdit = "{$name}.edit";
         $permDelete = "{$name}.delete";
 
         $content = "<?php
 
-namespace App\\Http\\Controllers\\Web;
+namespace {$appNamespace}\\Http\\Controllers\\Web;
 
-use App\\Http\\Controllers\\Controller;
-use Core\\Application\\{$plural}\\Contracts\\{$name}DTO;
-use Core\\Application\\{$plural}\\I{$name}AppService;
+use {$appNamespace}\\Http\\Controllers\\Controller;
+use ".PackageConfig::applicationNamespace("{$plural}\\Contracts")."\\{$name}DTO;
+use ".PackageConfig::applicationNamespace($plural)."\\I{$name}AppService;
 use Illuminate\\Http\\JsonResponse;
 use Illuminate\\Http\\Request;
 use Illuminate\\Validation\\ValidationException;
@@ -530,7 +561,7 @@ class {$className} extends Controller
 }
 ";
         $filesystem->put($filePath, $content);
-        $this->info("Created: app/Http/Controllers/Web/{$className}.php");
+        $this->info('Created: '.PackageConfig::webControllerPath("{$className}.php"));
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -539,7 +570,7 @@ class {$className} extends Controller
 
     private function createVuePages(Filesystem $filesystem, string $name, string $plural): void
     {
-        $pageFolder = resource_path('js/pages/' . Str::camel($plural));
+        $pageFolder = base_path(PackageConfig::frontendPagesPath(Str::camel($plural)));
         $filesystem->ensureDirectoryExists($pageFolder);
 
         $this->createVueIndexPage($filesystem, $pageFolder, $name, $plural);
@@ -550,20 +581,21 @@ class {$className} extends Controller
     {
         $filePath = "{$pageFolder}/Index.vue";
         if ($filesystem->exists($filePath)) {
-            $this->warn("Skipped (exists): resources/js/pages/" . Str::camel($plural) . "/Index.vue");
+            $this->warn('Skipped (exists): '.PackageConfig::frontendPagesPath(Str::camel($plural).'/Index.vue'));
+
             return;
         }
 
-        $proxyClass    = "{$name}AppServiceProxy";
-        $dtoType       = "{$name}DTO";
-        $listDtoType   = "{$name}ListDTO";
-        $title         = Str::headline($plural);
-        $entityLabel   = Str::headline($name);
+        $proxyClass = "{$name}AppServiceProxy";
+        $dtoType = "{$name}DTO";
+        $listDtoType = "{$name}ListDTO";
+        $title = Str::headline($plural);
+        $entityLabel = Str::headline($name);
         $formComponent = "{$name}Form";
-        $permView      = "{$name}.view";
-        $permCreate    = "{$name}.create";
-        $permEdit      = "{$name}.edit";
-        $permDelete    = "{$name}.delete";
+        $permView = "{$name}.view";
+        $permCreate = "{$name}.create";
+        $permEdit = "{$name}.edit";
+        $permDelete = "{$name}.delete";
 
         $content = <<<VUE
 <script setup lang="ts">
@@ -588,8 +620,8 @@ import {
 } from '@/components/ui/table';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-vue-next';
 import {$formComponent} from './{$formComponent}.vue';
-import type { {$dtoType}, {$listDtoType} } from '@/proxiees/models';
-import { {$proxyClass} } from '@/proxiees/services/{$name}AppService';
+import type { {$dtoType}, {$listDtoType} } from '@/proxies/models';
+import { {$proxyClass} } from '@/proxies/services/{$name}AppService';
 import { can } from '@/composables/useAuth';
 
 const canView   = can('{$permView}');
@@ -790,18 +822,19 @@ function handleCancel(): void {
 VUE;
 
         $filesystem->put($filePath, $content);
-        $this->info("Created: resources/js/pages/" . Str::camel($plural) . "/Index.vue");
+        $this->info('Created: '.PackageConfig::frontendPagesPath(Str::camel($plural).'/Index.vue'));
     }
 
     private function createVueFormComponent(Filesystem $filesystem, string $pageFolder, string $name, string $plural): void
     {
         $filePath = "{$pageFolder}/{$name}Form.vue";
         if ($filesystem->exists($filePath)) {
-            $this->warn("Skipped (exists): resources/js/pages/" . Str::camel($plural) . "/{$name}Form.vue");
+            $this->warn('Skipped (exists): '.PackageConfig::frontendPagesPath(Str::camel($plural)."/{$name}Form.vue"));
+
             return;
         }
 
-        $dtoType     = "{$name}DTO";
+        $dtoType = "{$name}DTO";
         $entityLabel = Str::headline($name);
 
         $content = <<<VUE
@@ -810,7 +843,7 @@ import { reactive, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { {$dtoType} } from '@/proxiees/models';
+import type { {$dtoType} } from '@/proxies/models';
 
 const props = defineProps<{
     mode: 'create' | 'edit';
@@ -935,6 +968,6 @@ function onSubmit(e: Event): void {
 VUE;
 
         $filesystem->put($filePath, $content);
-        $this->info("Created: resources/js/pages/" . Str::camel($plural) . "/{$name}Form.vue");
+        $this->info('Created: '.PackageConfig::frontendPagesPath(Str::camel($plural)."/{$name}Form.vue"));
     }
 }

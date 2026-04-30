@@ -20,7 +20,7 @@ class AppServiceRouteController
         $class = $request->route()?->defaults['_app_service_class'] ?? null;
         $method = $request->route()?->defaults['_app_service_method'] ?? null;
 
-        if (!is_string($class) || !is_string($method)) {
+        if (! is_string($class) || ! is_string($method)) {
             throw new HttpException(500, 'AppService route metadata is incomplete.');
         }
 
@@ -67,15 +67,15 @@ class AppServiceRouteController
         string $httpMethod,
         string $methodName
     ): string {
-        if (!empty($parameter->getAttributes(FromUri::class))) {
+        if (! empty($parameter->getAttributes(FromUri::class))) {
             return 'route';
         }
 
-        if (!empty($parameter->getAttributes(FromQuery::class))) {
+        if (! empty($parameter->getAttributes(FromQuery::class))) {
             return 'query';
         }
 
-        if (!empty($parameter->getAttributes(FromBody::class))) {
+        if (! empty($parameter->getAttributes(FromBody::class))) {
             return 'body';
         }
 
@@ -87,7 +87,7 @@ class AppServiceRouteController
             return $this->shouldResolveFromContainer($parameter) ? 'container' : 'query';
         }
 
-        if ($this->shouldResolveFromContainer($parameter) && !$this->requestHasBodyKey($request, $parameter->getName())) {
+        if ($this->shouldResolveFromContainer($parameter) && ! $this->requestHasBodyKey($request, $parameter->getName())) {
             return 'container';
         }
 
@@ -110,7 +110,7 @@ class AppServiceRouteController
 
     private function resolveRouteParameter(ReflectionParameter $parameter, Request $request): array
     {
-        if (!$this->routeHasParameter($request, $parameter->getName())) {
+        if (! $this->routeHasParameter($request, $parameter->getName())) {
             return ['resolved' => false, 'value' => null];
         }
 

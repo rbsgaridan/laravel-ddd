@@ -2,8 +2,9 @@
 
 namespace Incoder\DDD\Application\DTOs;
 
-use Spatie\LaravelData\Data;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\LaravelData\Data;
+use Spatie\LaravelData\DataCollection;
 
 /**
  * Base class for Data Transfer Objects (DTOs).
@@ -11,10 +12,11 @@ use Illuminate\Database\Eloquent\Model;
  * Extend this in your DTOs if you want to keep a common base type.
  * Otherwise, you can extend Spatie's Data directly.
  */
-abstract class DTOBase extends Data {
+abstract class DTOBase extends Data
+{
     /**
      * Summary of toDTO
-     * @param Model $model
+     *
      * @return DTOBase
      */
     public static function toDTO(Model $model): static
@@ -24,13 +26,13 @@ abstract class DTOBase extends Data {
 
     /**
      * Summary of toDTOs
-     * @param iterable $models
-     * @return \Spatie\LaravelData\DataCollection|static[]
+     *
+     * @return DataCollection|static[]
      */
     public static function toDTOs(iterable $models)
     {
         return static::collect(
-            collect($models)->map(fn($m) => static::toDTO($m))
+            collect($models)->map(fn ($m) => static::toDTO($m))
         );
     }
 }

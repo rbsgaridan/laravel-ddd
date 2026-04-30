@@ -22,12 +22,12 @@ class SwaggerUiController extends Controller
     public function ui(): Response
     {
         // Use a relative path to keep the same origin/scheme as the docs page.
-        $specUrl     = config('api-docs.spec_path', '/api/docs/spec');
-        $title       = e(config('api-docs.title', config('app.name', 'API') . ' API'));
-        $version     = e(config('api-docs.version', '1.0.0'));
-        $loginUrl    = e(url('/login'));
+        $specUrl = config('api-docs.spec_path', '/api/docs/spec');
+        $title = e(config('api-docs.title', config('app.name', 'API').' API'));
+        $version = e(config('api-docs.version', '1.0.0'));
+        $loginUrl = e(url('/login'));
         $apiLoginUrl = e(url('/api/auth/login'));
-        $meUrl       = e(url('/api/auth/me'));
+        $meUrl = e(url('/api/auth/me'));
 
         $html = <<<HTML
 <!DOCTYPE html>
@@ -444,8 +444,8 @@ HTML;
      */
     public function spec(): JsonResponse
     {
-        $generator = new OpenApiGenerator();
-        $spec      = $generator->generate();
+        $generator = new OpenApiGenerator;
+        $spec = $generator->generate();
 
         return response()->json($spec);
     }

@@ -3,9 +3,7 @@
 namespace Incoder\DDD\Domain\Entities;
 
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Incoder\DDD\Domain\Events\DomainEvent;
-use Incoder\DDD\Domain\Entities\Entity;
 
 /**
  * Base class for aggregate roots in a Domain-Driven Design (DDD) architecture.
@@ -16,7 +14,6 @@ use Incoder\DDD\Domain\Entities\Entity;
  */
 abstract class AggregateRoot extends Entity
 {
-
     /**
      * The primary key type for all Aggregate .
      *
@@ -28,6 +25,7 @@ abstract class AggregateRoot extends Entity
      * @var Collection<int, object>
      */
     protected Collection $domainEvents;
+
     public function __construct(array $attributes = [])
     {
         parent::__construct($attributes);
@@ -37,8 +35,7 @@ abstract class AggregateRoot extends Entity
     /**
      * Add a domain event to this aggregate root.
      *
-     * @param object $event
-     * @return void
+     * @param  object  $event
      */
     protected function recordEvent(DomainEvent $event): void
     {
@@ -57,8 +54,6 @@ abstract class AggregateRoot extends Entity
 
     /**
      * Clear all recorded domain events.
-     *
-     * @return void
      */
     public function clearDomainEvents(): void
     {

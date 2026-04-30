@@ -20,7 +20,7 @@ use Attribute;
 class ApiBody
 {
     public function __construct(
-        /** @var class-string  DTO class for schema inference */
+        /** @var class-string DTO class for schema inference */
         public string $class,
         public string $description = '',
         public bool $required = true

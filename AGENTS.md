@@ -9,15 +9,16 @@ This package was split from an HRIS unirepo and should be maintainable and consu
 ## Package Overview
 
 - Composer name in `composer.json`: `incoder/laravel-ddd`
-- README install example uses `incoder/ddd:@dev`; final published name is unresolved
+- README install example uses `incoder/laravel-ddd`
 - PHP: `^8.3`
-- Illuminate: `illuminate/support`, `illuminate/database` `^12.21`
+- Illuminate runtime deps include `auth`, `console`, `database`, `filesystem`, `http`, `routing`, `support` `^12.21`
 - Other runtime deps: `ramsey/uuid`, `spatie/laravel-data`, `spatie/laravel-activitylog`
 - PSR-4: `Incoder\\DDD\\` -> `src/`
 - Main folders: `src/Application`, `src/Domain`, `src/Infrastructure`, `src/Support`, `config`, `docs/features`
 - Package provider: `Incoder\\DDD\\Support\\IncoderDDDServiceProvider`
 - Nested provider: `Incoder\\DDD\\Support\\Reporting\\ReportServiceProvider`
 - Published config:
+  - `config/incoder-ddd.php` via `incoder-ddd-config`
   - `config/api-docs.php` via `api-docs`
   - `config/reporting.php` via `incoder-ddd-config`
 - Registered commands:
@@ -28,8 +29,8 @@ This package was split from an HRIS unirepo and should be maintainable and consu
   - `make:domain-crud`
   - `migrate:fresh-schema`
 - Confirmed feature areas: DDD base classes, repositories, DTO/app-service bases, attribute routing, OpenAPI, TS proxies, Flutter proxies, SSRS reporting
-- No `tests/` directory
-- No root `phpunit.xml*`, `pest.php`, `pint.json`, `.github/`, or Composer `scripts`
+- Tests: `tests/` with PHPUnit + Orchestra Testbench
+- Dev tooling: Composer scripts, `phpunit.xml.dist`, `phpstan.neon.dist`, `pint.json`, `.github/workflows/ci.yml`
 
 ## Architecture Role
 
@@ -44,7 +45,8 @@ Current consumer assumptions already in the codebase:
 - Some scanning/binding assumes `Core\\Application\\...` and `Core\\Domain\\...`
 - Controller route scanning uses `app/Http/Controllers`
 - AppService routes default to `/app/api/{service}`
-- Proxy generators default to `resources/js/proxiees` and `../flutter/...`
+- Proxy generators default to `resources/js/proxies` and `../flutter/...`
+- These package conventions are configurable through `config/incoder-ddd.php`
 
 Treat those conventions as existing public behavior unless intentionally changed with migration guidance.
 
@@ -76,9 +78,11 @@ Treat those conventions as existing public behavior unless intentionally changed
 ## Testing and Validation
 
 - Inspect `composer.json`, providers, and changed source files before choosing validation.
-- No repo-local test harness is present, so use the smallest relevant validation and state gaps clearly.
-- Verified repo-local command:
+- Verified repo-local commands:
   - `composer validate --no-check-publish`
+  - `composer test`
+  - `composer lint`
+  - `composer analyse`
 - Useful follow-up when relevant:
   - `composer dump-autoload`
   - `php artisan list`

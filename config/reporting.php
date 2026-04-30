@@ -19,7 +19,7 @@ return [
         /*
          * Base URL of your SSRS server
          * Example: http://your-ssrs-server/ReportServer
-         * 
+         *
          * Note: This should point to ReportServer, not ReportServerWeb
          * The service will automatically append SOAP endpoint paths:
          * - /ReportExecution2005.asmx?wsdl (for rendering)

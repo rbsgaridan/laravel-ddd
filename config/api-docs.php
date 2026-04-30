@@ -22,9 +22,9 @@ return [
     | API Info
     |--------------------------------------------------------------------------
     */
-    'title'       => env('APP_NAME', 'Laravel') . ' API',
+    'title' => env('APP_NAME', 'Laravel').' API',
     'description' => '',
-    'version'     => '1.0.0',
+    'version' => '1.0.0',
 
     /*
     |--------------------------------------------------------------------------
@@ -33,7 +33,7 @@ return [
     | UI:   Swagger interactive docs browser
     | Spec: Raw OpenAPI 3.0 JSON spec (consumed by the UI and external tools)
     */
-    'path'      => '/api/docs',
+    'path' => '/api/docs',
     'spec_path' => '/api/docs/spec',
 
     /*
@@ -68,17 +68,17 @@ return [
         // Bearer token — for mobile apps / external API clients.
         // Obtain via POST /api/auth/login, then set: Authorization: Bearer {token}
         'sanctum' => [
-            'type'         => 'http',
-            'scheme'       => 'bearer',
+            'type' => 'http',
+            'scheme' => 'bearer',
             'bearerFormat' => 'Sanctum',
-            'description'  => 'Bearer token — obtain via POST /api/auth/login',
+            'description' => 'Bearer token — obtain via POST /api/auth/login',
         ],
         // Cookie / session — for browser-based SPA clients (Inertia.js).
         // Login at /login first; the browser sends the session cookie automatically.
         'sessionAuth' => [
-            'type'        => 'apiKey',
-            'in'          => 'cookie',
-            'name'        => 'laravel_session',
+            'type' => 'apiKey',
+            'in' => 'cookie',
+            'name' => 'laravel_session',
             'description' => 'Session cookie — for browser/Inertia SPA clients. Log in at /login first.',
         ],
     ],

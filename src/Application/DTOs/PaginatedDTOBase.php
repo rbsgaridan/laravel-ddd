@@ -2,19 +2,21 @@
 
 namespace Incoder\DDD\Application\DTOs;
 
-use Spatie\LaravelData\DataCollection;
-use Spatie\LaravelData\Data;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Spatie\LaravelData\Data;
+use Spatie\LaravelData\DataCollection;
 
 /**
  * Summary of PaginatedDTOBase
+ *
  * @template T
+ *
+ * @phpstan-consistent-constructor
  */
 abstract class PaginatedDTOBase extends Data
 {
     /**
-     * @param DataCollection $data
-     * @param array<string,mixed> $meta
+     * @param  array<string,mixed>  $meta
      */
     public function __construct(
         public DataCollection $data,
@@ -23,8 +25,7 @@ abstract class PaginatedDTOBase extends Data
 
     /**
      * Summary of fromPaginator
-     * @param \Illuminate\Pagination\LengthAwarePaginator $paginator
-     * @param string $dtoClass
+     *
      * @return PaginatedDTOBase
      */
     public static function fromPaginator(
@@ -38,11 +39,10 @@ abstract class PaginatedDTOBase extends Data
             $collection,
             [
                 'current_page' => $paginator->currentPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
-                'last_page'    => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
             ]
         );
     }
-
 }
